@@ -60,6 +60,17 @@
     }
     .reaction-picker span { font-size: 20px; cursor: pointer; transition: transform 0.1s; }
     .reaction-picker span:hover { transform: scale(1.3); }
+        /* Mentions and Markdown */
+    .mention { color: #60a5fa; font-weight: bold; }
+    .mention-me { background: rgba(37,99,235,0.3); padding: 0 4px; border-radius: 4px; color: white; }
+    .msg code { background: rgba(0,0,0,0.4); padding: 2px 5px; border-radius: 4px; font-family: monospace; font-size: 0.9em; }
+    
+    /* Room Switcher */
+    .room-list-item { padding: 10px; cursor: pointer; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .room-list-item:hover { background: rgba(255,255,255,0.1); }
+    .room-list-item.active { background: #2563eb; }
+    .room-btn { cursor: pointer; margin-left: 8px; opacity: 0.7; font-size: 18px; }
+    .room-btn:hover { opacity: 1; }
   </style>
   
 </head>
@@ -127,6 +138,43 @@
     let onlineUsers = {};
     let userProfilesCache = {};
 
+        // --- Room Switcher Logic ---
+    function getRooms() {
+        return JSON.parse(localStorage.getItem('chat_rooms') || '["global","general"]');
+    }
+    function saveRoom(name) {
+        let rooms = getRooms();
+        if (!rooms.includes(name)) {
+            rooms.unshift(name);
+            localStorage.setItem('chat_rooms', JSON.stringify(rooms.slice(0, 10)));
+        }
+    }
+    saveRoom(room); // Save current room on load
+
+    window.toggleRoomModal = () => {
+        document.getElementById('roomModal').classList.toggle('hidden');
+        if (!document.getElementById('roomModal').classList.contains('hidden')) renderRoomList();
+    };
+    window.joinNewRoom = () => {
+        const input = document.getElementById('newRoomInput');
+        const name = input.value.trim().toLowerCase().replace(/\s+/g, '-');
+        if (name) {
+            saveRoom(name);
+            window.location.search = '?room=' + encodeURIComponent(name);
+        }
+    };
+    function renderRoomList() {
+        const list = document.getElementById('roomList');
+        list.innerHTML = '';
+        getRooms().forEach(r => {
+            const div = document.createElement('div');
+            div.className = 'room-list-item' + (r === room ? ' active' : '');
+            div.innerHTML = `<span># ${r}</span>`;
+            div.onclick = () => { if (r !== room) window.location.search = '?room=' + encodeURIComponent(r); };
+            list.appendChild(div);
+        });
+    }
+
     function updateOnlineUI() {
       const count = Object.keys(onlineUsers).length;
       const countEl = document.getElementById('onlineCount');
@@ -182,69 +230,85 @@
       const d = new Date(ts);
       return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     }
-        function parseMessageText(text) {
-      if (!text) return document.createTextNode("");
-      
-      const urlRegex = /(https?:\/\/[^\s]+)/g;
-      const isUrlRegex = /^https?:\/\/[^\s]+$/i;
-      const parts = text.split(urlRegex);
-      const fragment = document.createDocumentFragment();
-      
-      parts.forEach(part => {
-        if (isUrlRegex.test(part)) {
-          const lowerPart = part.toLowerCase();
-          const isImage = /\.(jpe?g|png|gif|webp|bmp|svg)(\?.*)?$/.test(lowerPart);
-          const isVideo = /\.(mp4|webm|ogg|mov)(\?.*)?$/.test(lowerPart);
-          
-          if (isImage) {
-            const container = document.createElement("div");
-            container.style.marginTop = "6px";
-            const img = document.createElement("img");
-            img.src = part;
-            img.style.maxWidth = "100%";
-            img.style.maxHeight = "300px";
-            img.style.borderRadius = "8px";
-            img.style.display = "block";
-            img.loading = "lazy";
-            img.onerror = () => { // Fallback if it's not actually an image
-              container.innerHTML = "";
-              const a = document.createElement("a");
-              a.href = part; a.target = "_blank"; a.rel = "noopener noreferrer";
-              a.textContent = part; a.style.color = "#60a5fa"; a.style.wordBreak = "break-all";
-              container.appendChild(a);
-            };
-            container.appendChild(img);
-            fragment.appendChild(container);
-          } else if (isVideo) {
-            const container = document.createElement("div");
-            container.style.marginTop = "6px";
-            const video = document.createElement("video");
-            video.src = part;
-            video.controls = true;
-            video.style.maxWidth = "100%";
-            video.style.maxHeight = "300px";
-            video.style.borderRadius = "8px";
-            video.onerror = () => {
-              container.innerHTML = "";
-              const a = document.createElement("a");
-              a.href = part; a.target = "_blank"; a.rel = "noopener noreferrer";
-              a.textContent = part; a.style.color = "#60a5fa"; a.style.wordBreak = "break-all";
-              container.appendChild(a);
-            };
-            container.appendChild(video);
-            fragment.appendChild(container);
-          } else {
-            const a = document.createElement("a");
-            a.href = part; a.target = "_blank"; a.rel = "noopener noreferrer";
-            a.textContent = part; a.style.color = "#60a5fa"; a.style.textDecoration = "underline"; a.style.wordBreak = "break-all";
-            fragment.appendChild(a);
-          }
-        } else if (part.length > 0) {
-          fragment.appendChild(document.createTextNode(part));
-        }
-      });
-      
-      return fragment;
+        function parseMarkdownAndMentions(text) {
+        // Escape HTML to prevent hacking
+        let safeText = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+        // Mentions: @Name
+        safeText = safeText.replace(/@([a-zA-Z0-9_]+)/g, (match, name) => {
+            const matchUser = Object.values(userProfilesCache).find(p => p.name.toLowerCase() === name.toLowerCase());
+            if (matchUser) {
+                const isMe = matchUser.name.toLowerCase() === myName.toLowerCase();
+                return `<span class="mention ${isMe ? 'mention-me' : ''}">${match}</span>`;
+            }
+            return match;
+        });
+
+        // Markdown: `code`, *bold*, _italic_
+        safeText = safeText.replace(/`([^`]+)`/g, '<code>$1</code>');
+        safeText = safeText.replace(/\*([^*]+)\*/g, '<strong>$1</strong>');
+        safeText = safeText.replace(/_([^_]+)_/g, '<em>$1</em>');
+
+        return safeText;
+    }
+
+    function parseMessageText(text) {
+        if (!text) return document.createTextNode("");
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        const parts = text.split(urlRegex);
+        const fragment = document.createDocumentFragment();
+
+        parts.forEach(part => {
+            if (/^https?:\/\/[^\s]+$/i.test(part)) {
+                const lowerPart = part.toLowerCase();
+                const isImage = /\.(jpe?g|png|gif|webp|bmp|svg)(\?.*)?$/.test(lowerPart);
+                const isVideo = /\.(mp4|webm|ogg|mov)(\?.*)?$/.test(lowerPart);
+                
+                if (isImage) {
+                    const container = document.createElement("div");
+                    container.style.marginTop = "6px";
+                    const img = document.createElement("img");
+                    img.src = part;
+                    img.style.cssText = "max-width:100%;max-height:300px;border-radius:8px;display:block;";
+                    img.loading = "lazy";
+                    img.onerror = () => { 
+                        container.innerHTML = "";
+                        const a = document.createElement("a");
+                        a.href = part; a.target = "_blank"; a.rel = "noopener noreferrer";
+                        a.textContent = part; a.style.cssText = "color:#60a5fa;word-break:break-all;";
+                        container.appendChild(a);
+                    };
+                    container.appendChild(img);
+                    fragment.appendChild(container);
+                } else if (isVideo) {
+                    const container = document.createElement("div");
+                    container.style.marginTop = "6px";
+                    const video = document.createElement("video");
+                    video.src = part; video.controls = true;
+                    video.style.cssText = "max-width:100%;max-height:300px;border-radius:8px;";
+                    video.onerror = () => {
+                        container.innerHTML = "";
+                        const a = document.createElement("a");
+                        a.href = part; a.target = "_blank"; a.rel = "noopener noreferrer";
+                        a.textContent = part; a.style.cssText = "color:#60a5fa;word-break:break-all;";
+                        container.appendChild(a);
+                    };
+                    container.appendChild(video);
+                    fragment.appendChild(container);
+                } else {
+                    const a = document.createElement("a");
+                    a.href = part; a.target = "_blank"; a.rel = "noopener noreferrer";
+                    a.textContent = part; a.style.cssText = "color:#60a5fa;text-decoration:underline;word-break:break-all;";
+                    fragment.appendChild(a);
+                }
+            } else if (part.length > 0) {
+                // Apply Markdown and Mentions to text parts!
+                const span = document.createElement('span');
+                span.innerHTML = parseMarkdownAndMentions(part);
+                fragment.appendChild(span);
+            }
+        });
+        return fragment;
     }
         const EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
 
@@ -476,15 +540,23 @@
       const roomSpan = document.createElement("span");
       roomSpan.style.cssText = "opacity: 0.65; font-size: 12px;";
       roomSpan.textContent = `· ${room}`;
-      
+
       const onlineCountEl = document.createElement("span");
       onlineCountEl.id = "onlineCount";
       onlineCountEl.style.cssText = "font-size:12px; margin-left:auto; cursor:pointer; background:rgba(255,255,255,0.1); padding:4px 10px; border-radius:12px;";
       onlineCountEl.textContent = "🟢 0 online";
       onlineCountEl.onclick = toggleOnlineModal;
 
+      const roomBtn = document.createElement("span");
+      roomBtn.className = "room-btn";
+      roomBtn.innerHTML = "🚪";
+      roomBtn.title = "Switch Rooms";
+      roomBtn.onclick = toggleRoomModal;
+
       header.appendChild(myAvatar); 
       header.appendChild(nameDiv); 
+      header.appendChild(roomSpan);
+      header.appendChild(roomBtn);
       header.appendChild(onlineCountEl);
       updateOnlineUI();
 
@@ -594,6 +666,18 @@
         <span class="close-modal" onclick="toggleOnlineModal()">×</span>
       </div>
       <div id="onlineList"></div>
+    </div>
+  </div>
+    <div id="roomModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <strong>Rooms</strong>
+        <span class="close-modal" onclick="toggleRoomModal()">×</span>
+      </div>
+      <input type="text" id="newRoomInput" placeholder="New room name..." style="width:100%; padding:10px; border-radius:6px; border:1px solid #334155; background:#0f172a; color:white; margin-bottom:10px; box-sizing:border-box;" />
+      <button onclick="joinNewRoom()" style="width:100%; margin-bottom:15px;">Join / Create</button>
+      <div style="font-size:12px; opacity:0.6; margin-bottom:8px;">Recent Rooms:</div>
+      <div id="roomList"></div>
     </div>
   </div>
 </body>
