@@ -62,7 +62,7 @@
   </div>
 
   <main id="messages" aria-live="polite"></main>
-
+    <div id="typingIndicator" style="padding: 0 14px 4px; font-size: 12px; opacity: 0.7; min-height: 16px; font-style: italic;"></div>
   <div id="replyBar">
     Replying to <strong id="replyName"></strong>
     <span class="close" onclick="cancelReply()">×</span>
@@ -426,10 +426,59 @@
         delete messagesCache[s.key];
       });
     });
+    let typingTimer = null;
+    const typingRef = () => db.ref(`rooms/${room}/typing/${myUid}`);
 
+    function startTyping() {
+      if (!typingTimer) {
+        typingRef().set(true);
+        typingRef().onDisconnect().remove(); // Auto-removes if you close the tab
+      }
+      clearTimeout(typingTimer);
+      typingTimer = setTimeout(() => {
+        typingRef().remove();
+        typingTimer = null;
+      }, 2500); // Disappears 2.5 seconds after you stop typing
+    }
+
+    function stopTyping() {
+      clearTimeout(typingTimer);
+      typingTimer = null;
+      typingRef().remove();
+    }
+
+    textInput.addEventListener('input', startTyping);
+
+    db.ref(`rooms/${room}/typing`).on('value', async (snap) => {
+      const typingUsers = snap.val() || {};
+      delete typingUsers[myUid]; // Don't show yourself
+      
+      const uids = Object.keys(typingUsers);
+      const indicator = document.getElementById('typingIndicator');
+      
+      if (uids.length === 0) {
+        indicator.textContent = "";
+        return;
+      }
+
+      // Fetch names from cache (or grab them if they just joined)
+      const names = [];
+      for (const uid of uids) {
+        if (!userProfilesCache[uid]) {
+          const s = await db.ref('users/' + uid).once('value');
+          if (s.exists()) userProfilesCache[uid] = s.val();
+        }
+        names.push(userProfilesCache[uid]?.name || 'Someone');
+      }
+      
+      if (names.length === 1) indicator.textContent = `${names[0]} is typing...`;
+      else if (names.length === 2) indicator.textContent = `${names[0]} and ${names[1]} are typing...`;
+      else indicator.textContent = `${names[0]} and ${names.length - 1} others are typing...`;
+    });
     chatForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const text = textInput.value.trim();
+      stopTyping();
       if (!text) return;
       sendBtn.disabled = true;
 
