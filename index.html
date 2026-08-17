@@ -227,6 +227,9 @@ const firebaseConfig = {
     }
 
     function addMessage(data) {
+      const nearBottom =
+        messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 80;
+
       const div = document.createElement("div");
       div.className = "msg" + ((data.name || "") === myName ? " me" : "");
 
@@ -241,7 +244,11 @@ const firebaseConfig = {
       div.appendChild(body);
 
       messagesEl.appendChild(div);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
+
+      const isMine = (data.name || "") === myName;
+      if (nearBottom || isMine) {
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      }
     }
 
     // Load latest 100 messages, then listen for new ones.
