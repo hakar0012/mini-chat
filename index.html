@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Mini Group Chat</title>
-
+  
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; font-family: system-ui, -apple-system, sans-serif; height: 100dvh; display: flex; flex-direction: column; background: #0f172a; color: #e5e7eb; }
@@ -39,7 +39,15 @@
     .edited { font-size: 10px; opacity: 0.6; margin-left: 6px; }
     .highlight { animation: flash 1.5s; }
     @keyframes flash { 0% { background: #49cbd0; } 100% { background: transparent; } }
+    .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; display: flex; align-items: center; justify-content: center; }
+    .modal.hidden { display: none !important; }
+    .modal-content { background: #1e293b; border-radius: 12px; padding: 16px; width: 90%; max-width: 300px; max-height: 70vh; overflow-y: auto; }
+    .modal-header { display: flex; justify-content: space-between; margin-bottom: 12px; }
+    .close-modal { cursor: pointer; font-size: 22px; opacity: 0.8; }
+    .online-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
+    .online-item:last-child { border-bottom: none; }
   </style>
+  
 </head>
 
 <body>
@@ -103,38 +111,56 @@
     let replyingTo = null;
     let editingId = null;
     let onlineUsers = {};
+    let userProfilesCache = {};
 
-    function updateOnlineStatus() {
-      document.querySelectorAll('.status-dot').forEach(dot => {
-        if (onlineUsers[dot.dataset.uid]) {
-          dot.style.display = "block";
-        } else {
-          dot.style.display = "none";
-        }
+    function updateOnlineUI() {
+      const count = Object.keys(onlineUsers).length;
+      const countEl = document.getElementById('onlineCount');
+      if (countEl) countEl.textContent = `🟢 ${count} online`;
+    }
+
+    window.toggleOnlineModal = () => {
+      const modal = document.getElementById('onlineModal');
+      modal.classList.toggle('hidden');
+      if (!modal.classList.contains('hidden')) renderOnlineList();
+    };
+
+    function renderOnlineList() {
+      const listEl = document.getElementById('onlineList');
+      listEl.innerHTML = "";
+      const uids = Object.keys(onlineUsers);
+      if (uids.length === 0) {
+        listEl.innerHTML = "<p style='opacity:0.6; margin:0;'>No one is online.</p>";
+        return;
+      }
+      uids.forEach(uid => {
+        const profile = userProfilesCache[uid] || { name: "Unknown", avatarType: 'initials', avatarValue: '#334155' };
+        const item = document.createElement("div");
+        item.className = "online-item";
+        item.appendChild(createAvatarEl(profile.avatarType, profile.avatarValue, profile.name, uid));
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = profile.name;
+        item.appendChild(nameSpan);
+        listEl.appendChild(item);
       });
     }
-      function createAvatarEl(type, value, name, uid) {
-        const wrapper = document.createElement("div");
-        wrapper.style.cssText = "position:relative; width:28px; height:28px; flex-shrink:0;";
 
-        const el = document.createElement("div");
-        el.style.cssText = "width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:14px;";
-        if (type === 'preset') {
-          el.textContent = value || '👤';
-          el.style.background = '#1e293b';
-        } else {
-          el.textContent = (name || '?').charAt(0).toUpperCase();
-          el.style.background = value || '#2563eb';
-        }
-        wrapper.appendChild(el);
-
-        const dot = document.createElement("div");
-        dot.className = "status-dot";
-        dot.dataset.uid = uid;
-        dot.style.cssText = "position:absolute;bottom:-1px;right:-1px;width:9px;height:9px;background:#22c55e;border-radius:50%;border:2px solid #0f172a;display:none;";
-        wrapper.appendChild(dot);
-
-        return wrapper;
+    function cacheProfile(data) {
+      if (data && data.uid && !userProfilesCache[data.uid]) {
+        userProfilesCache[data.uid] = { name: data.name, avatarType: data.avatarType, avatarValue: data.avatarValue };
+      }
+    }
+          function createAvatarEl(type, value, name, uid) {
+      const el = document.createElement("div");
+      el.style.cssText = "width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:14px;flex-shrink:0;";
+      if (type === 'preset') {
+        el.textContent = value || '👤';
+        el.style.background = '#1e293b';
+      } else {
+        el.textContent = (name || '?').charAt(0).toUpperCase();
+        el.style.background = value || '#2563eb';
+      }
+      return el;
     }
 
     function timeLabel(ts) {
@@ -281,6 +307,7 @@
     }
 
     function addMessage(data, msgId) {
+      cacheProfile(data);
       messagesCache[msgId] = data;
       const nearBottom = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 80;
       const row = renderMessage(data, msgId);
@@ -339,9 +366,18 @@
       myPresenceRef.set(true);
       myPresenceRef.onDisconnect().remove();
 
-      db.ref("presence").on("value", (snap) => {
+      db.ref("presence").on("value", async (snap) => {
         onlineUsers = snap.val() || {};
-        updateOnlineStatus();
+        const uids = Object.keys(onlineUsers);
+        const missingUids = uids.filter(uid => !userProfilesCache[uid]);
+        if (missingUids.length > 0) {
+          const promises = missingUids.map(uid => db.ref('users/' + uid).once('value'));
+          const snaps = await Promise.all(promises);
+          snaps.forEach((s, i) => {
+            if (s.exists()) userProfilesCache[missingUids[i]] = s.val();
+          });
+        }
+        updateOnlineUI();
       });
       const snap = await db.ref('users/' + myUid).once('value');
       if (!snap.exists()) { window.location.href = 'profile.html'; return; }
@@ -357,8 +393,16 @@
       const nameDiv = document.createElement("strong");
       nameDiv.textContent = myName; nameDiv.style.fontSize = "15px";
 
-      header.appendChild(myAvatar); header.appendChild(nameDiv); header.appendChild(roomLabel);
-      updateOnlineStatus();
+      const onlineCountEl = document.createElement("span");
+      onlineCountEl.id = "onlineCount";
+      onlineCountEl.style.cssText = "font-size:12px; margin-left:auto; cursor:pointer; background:rgba(255,255,255,0.1); padding:4px 10px; border-radius:12px;";
+      onlineCountEl.textContent = "🟢 0 online";
+      onlineCountEl.onclick = toggleOnlineModal;
+
+      header.appendChild(myAvatar); 
+      header.appendChild(nameDiv); 
+      header.appendChild(onlineCountEl);
+      updateOnlineUI();
 
       document.getElementById("nameBar").classList.add("hidden");
       chatForm.classList.remove("hidden");
@@ -370,9 +414,10 @@
       messagesRef.on("child_changed", (s) => {
         const oldEl = document.getElementById("msg-" + s.key);
         const newRow = renderMessage(s.val(), s.key);
+             cacheProfile(s.val());
         messagesCache[s.key] = s.val();
         if (oldEl) oldEl.replaceWith(newRow);
-        updateOnlineStatus();
+        updateOnlineStatus();// give or take , doesn't matter
       });
       
       messagesRef.on("child_removed", (s) => {
@@ -409,5 +454,14 @@
       finally { sendBtn.disabled = false; }
     });
   </script>
+    <div id="onlineModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <strong>Online Users</strong>
+        <span class="close-modal" onclick="toggleOnlineModal()">×</span>
+      </div>
+      <div id="onlineList"></div>
+    </div>
+  </div>
 </body>
 </html>
