@@ -102,18 +102,39 @@
     let messagesCache = {};
     let replyingTo = null;
     let editingId = null;
+    let onlineUsers = {};
 
-    function createAvatarEl(type, value, name) {
-      const el = document.createElement("div");
-      el.style.cssText = "width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:14px;flex-shrink:0;";
-      if (type === 'preset') {
-        el.textContent = value || '👤';
-        el.style.background = '#1e293b';
-      } else {
-        el.textContent = (name || '?').charAt(0).toUpperCase();
-        el.style.background = value || '#2563eb';
-      }
-      return el;
+    function updateOnlineStatus() {
+      document.querySelectorAll('.status-dot').forEach(dot => {
+        if (onlineUsers[dot.dataset.uid]) {
+          dot.style.display = "block";
+        } else {
+          dot.style.display = "none";
+        }
+      });
+    }
+      function createAvatarEl(type, value, name, uid) {
+        const wrapper = document.createElement("div");
+        wrapper.style.cssText = "position:relative; width:28px; height:28px; flex-shrink:0;";
+
+        const el = document.createElement("div");
+        el.style.cssText = "width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:14px;";
+        if (type === 'preset') {
+          el.textContent = value || '👤';
+          el.style.background = '#1e293b';
+        } else {
+          el.textContent = (name || '?').charAt(0).toUpperCase();
+          el.style.background = value || '#2563eb';
+        }
+        wrapper.appendChild(el);
+
+        const dot = document.createElement("div");
+        dot.className = "status-dot";
+        dot.dataset.uid = uid;
+        dot.style.cssText = "position:absolute;bottom:-1px;right:-1px;width:9px;height:9px;background:#22c55e;border-radius:50%;border:2px solid #0f172a;display:none;";
+        wrapper.appendChild(dot);
+
+        return wrapper;
     }
 
     function timeLabel(ts) {
@@ -195,7 +216,7 @@
       const isMine = data.uid === myUid;
       if (isMine) { row.style.marginLeft = "auto"; row.style.flexDirection = "row-reverse"; }
 
-      const avatar = createAvatarEl(data.avatarType, data.avatarValue, data.name);
+      const avatar = createAvatarEl(data.avatarType, data.avatarValue, data.name, data.uid);
 
       const msgBox = document.createElement("div");
       msgBox.className = "msg" + (isMine ? " me" : "");
@@ -266,6 +287,7 @@
       messagesEl.appendChild(row);
       const isMine = data.uid === myUid;
       if (nearBottom || isMine) messagesEl.scrollTop = messagesEl.scrollHeight;
+            updateOnlineStatus();
     }
 
     window.startReply = (id) => {
@@ -313,6 +335,14 @@
     firebase.auth().onAuthStateChanged(async (user) => {
       if (!user) { await firebase.auth().signInAnonymously(); return; }
       myUid = user.uid;
+            const myPresenceRef = db.ref("presence/" + myUid);
+      myPresenceRef.set(true);
+      myPresenceRef.onDisconnect().remove();
+
+      db.ref("presence").on("value", (snap) => {
+        onlineUsers = snap.val() || {};
+        updateOnlineStatus();
+      });
       const snap = await db.ref('users/' + myUid).once('value');
       if (!snap.exists()) { window.location.href = 'profile.html'; return; }
 
@@ -320,7 +350,7 @@
       myName = profile.name; myAvatarType = profile.avatarType; myAvatarValue = profile.avatarValue;
 
       header.innerHTML = "";
-      const myAvatar = createAvatarEl(myAvatarType, myAvatarValue, myName);
+      const myAvatar = createAvatarEl(myAvatarType, myAvatarValue, myName, myUid);
       myAvatar.style.cursor = "pointer";
       myAvatar.onclick = () => window.location.href = 'profile.html';
 
@@ -328,6 +358,7 @@
       nameDiv.textContent = myName; nameDiv.style.fontSize = "15px";
 
       header.appendChild(myAvatar); header.appendChild(nameDiv); header.appendChild(roomLabel);
+      updateOnlineStatus();
 
       document.getElementById("nameBar").classList.add("hidden");
       chatForm.classList.remove("hidden");
@@ -341,6 +372,7 @@
         const newRow = renderMessage(s.val(), s.key);
         messagesCache[s.key] = s.val();
         if (oldEl) oldEl.replaceWith(newRow);
+        updateOnlineStatus();
       });
       
       messagesRef.on("child_removed", (s) => {
