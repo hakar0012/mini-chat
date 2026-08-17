@@ -126,30 +126,6 @@
     let editingId = null;
     let onlineUsers = {};
     let userProfilesCache = {};
-        let unreadCount = 0;
-    let chatLoaded = false;
-
-    function playPopSound() {
-      try {
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const oscillator = audioCtx.createOscillator();
-        const gainNode = audioCtx.createGain();
-        oscillator.connect(gainNode);
-        gainNode.connect(audioCtx.destination);
-        oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
-        oscillator.frequency.exponentialRampToValueAtTime(400, audioCtx.currentTime + 0.1);
-        gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-        oscillator.start(audioCtx.currentTime);
-        oscillator.stop(audioCtx.currentTime + 0.1);
-      } catch (e) {}
-    }
-
-    window.addEventListener('focus', () => {
-      unreadCount = 0;
-      document.title = "Mini Group Chat";
-    });
 
     function updateOnlineUI() {
       const count = Object.keys(onlineUsers).length;
@@ -500,7 +476,7 @@
       const roomSpan = document.createElement("span");
       roomSpan.style.cssText = "opacity: 0.65; font-size: 12px;";
       roomSpan.textContent = `· ${room}`;
-
+      
       const onlineCountEl = document.createElement("span");
       onlineCountEl.id = "onlineCount";
       onlineCountEl.style.cssText = "font-size:12px; margin-left:auto; cursor:pointer; background:rgba(255,255,255,0.1); padding:4px 10px; border-radius:12px;";
@@ -509,7 +485,6 @@
 
       header.appendChild(myAvatar); 
       header.appendChild(nameDiv); 
-      header.appendChild(roomSpan);
       header.appendChild(onlineCountEl);
       updateOnlineUI();
 
@@ -517,26 +492,7 @@
       chatForm.classList.remove("hidden");
       textInput.focus();
 
-            messagesRef.orderByChild("ts").limitToLast(100).on("child_added", (s) => {
-        addMessage(s.val(), s.key);
-        
-        // If chat is already loaded, it means it's a NEW message
-        if (chatLoaded) {
-          const data = s.val();
-          // Only play sound and change title for OTHER people's messages
-          if (data.uid !== myUid) {
-            playPopSound();
-            if (document.hidden) {
-              unreadCount++;
-              document.title = `(${unreadCount}) Mini Group Chat`;
-            }
-          }
-        }
-      });
-
-      // Wait 1.5 seconds before marking chat as "loaded" 
-      // so it doesn't beep 100 times when you first open the page.
-      setTimeout(() => { chatLoaded = true; }, 1500);
+      messagesRef.orderByChild("ts").limitToLast(100).on("child_added", (s) => addMessage(s.val(), s.key));
       
       // UPDATED: Uses replaceWith to update exactly in place
       messagesRef.on("child_changed", (s) => {
