@@ -46,6 +46,20 @@
     .close-modal { cursor: pointer; font-size: 22px; opacity: 0.8; }
     .online-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
     .online-item:last-child { border-bottom: none; }
+      .reaction-pill {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 12px; padding: 2px 8px; font-size: 12px; cursor: pointer;
+      margin-right: 4px; margin-top: 4px; user-select: none;
+    }
+    .reaction-pill.mine { background: rgba(37,99,235,0.3); border-color: #2563eb; }
+    .reaction-picker {
+      position: absolute; bottom: 100%; left: 0; background: #1e293b; border: 1px solid #334155;
+      border-radius: 20px; padding: 4px 8px; display: flex; gap: 8px; z-index: 30;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin-bottom: 4px;
+    }
+    .reaction-picker span { font-size: 20px; cursor: pointer; transition: transform 0.1s; }
+    .reaction-picker span:hover { transform: scale(1.3); }
   </style>
   
 </head>
@@ -232,6 +246,35 @@
       
       return fragment;
     }
+        const EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
+
+    function showReactionPicker(msgId, anchorEl) {
+      const existing = document.querySelector('.reaction-picker');
+      if (existing) existing.remove();
+      
+      const picker = document.createElement('div');
+      picker.className = 'reaction-picker';
+      
+      EMOJIS.forEach(em => {
+        const span = document.createElement('span');
+        span.textContent = em;
+        span.onclick = (e) => {
+          e.stopPropagation();
+          db.ref(`rooms/${room}/reactions/${msgId}/${em}/${myUid}`).set(true);
+          picker.remove();
+        };
+        picker.appendChild(span);
+      });
+      
+      anchorEl.appendChild(picker);
+      
+      setTimeout(() => {
+        document.body.onclick = () => { 
+          picker.remove(); 
+          document.body.onclick = null; 
+        };
+      }, 10);
+    }
     // NEW: Separate rendering function so updates don't jump to the bottom
     function renderMessage(data, msgId) {
       const row = document.createElement("div");
@@ -268,6 +311,17 @@
 
       msgBox.appendChild(meta);
       msgBox.appendChild(body);
+
+      const reactionsContainer = document.createElement("div");
+      reactionsContainer.className = "reactions-container";
+      reactionsContainer.style.cssText = "display:flex; flex-wrap:wrap; margin-top:4px;";
+      msgBox.appendChild(reactionsContainer);
+
+      msgBox.ondblclick = () => showReactionPicker(msgId, msgBox);
+      let pressTimer;
+      msgBox.ontouchstart = () => { pressTimer = setTimeout(() => showReactionPicker(msgId, msgBox), 500); };
+      msgBox.ontouchend = () => clearTimeout(pressTimer);
+      msgBox.ontouchmove = () => clearTimeout(pressTimer);
       
       const actions = document.createElement("div");
       actions.className = "msg-actions " + (isMine ? "me" : "other");
@@ -362,7 +416,7 @@
     firebase.auth().onAuthStateChanged(async (user) => {
       if (!user) { await firebase.auth().signInAnonymously(); return; }
       myUid = user.uid;
-            const myPresenceRef = db.ref("presence/" + myUid);
+      const myPresenceRef = db.ref("presence/" + myUid);
       myPresenceRef.set(true);
       myPresenceRef.onDisconnect().remove();
 
@@ -378,6 +432,32 @@
           });
         }
         updateOnlineUI();
+      });
+      db.ref(`rooms/${room}/reactions`).on('value', (snap) => {
+        const allReactions = snap.val() || {};
+        document.querySelectorAll('.reactions-container').forEach(c => c.innerHTML = '');
+        
+        Object.keys(allReactions).forEach(msgId => {
+          const container = document.querySelector(`#msg-${msgId} .reactions-container`);
+          if (!container) return;
+          
+          const emojis = allReactions[msgId];
+          Object.keys(emojis).forEach(emoji => {
+            const users = emojis[emoji];
+            if (!users) return;
+            const count = Object.keys(users).length;
+            const isMine = users[myUid] === true;
+            
+            const pill = document.createElement('div');
+            pill.className = 'reaction-pill' + (isMine ? ' mine' : '');
+            pill.innerHTML = `${emoji} <span>${count}</span>`;
+            pill.onclick = () => {
+              const ref = db.ref(`rooms/${room}/reactions/${msgId}/${emoji}/${myUid}`);
+              if (isMine) ref.remove(); else ref.set(true);
+            };
+            container.appendChild(pill);
+          });
+        });
       });
       const snap = await db.ref('users/' + myUid).once('value');
       if (!snap.exists()) { window.location.href = 'profile.html'; return; }
