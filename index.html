@@ -6,111 +6,39 @@
   <title>Mini Group Chat</title>
 
   <style>
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      font-family: system-ui, -apple-system, sans-serif;
-      height: 100dvh;
-      display: flex;
-      flex-direction: column;
-      background: #0f172a;
-      color: #e5e7eb;
-    }
-
-    header {
-      padding: 12px 14px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    header strong {
-      font-size: 15px;
-    }
-
-    #roomLabel {
-      opacity: 0.65;
-      font-size: 12px;
-    }
-
-    #nameBar {
-      padding: 10px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-      display: flex;
-      gap: 8px;
-    }
-
-    #nameBar input {
-      max-width: 240px;
-    }
-
-    main {
-      flex: 1;
-      overflow-y: auto;
-      padding: 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .msg {
-      max-width: 85%;
-      padding: 8px 10px;
-      border-radius: 12px;
-      background: rgba(255, 255, 255, 0.08);
-      line-height: 1.35;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-
-    .msg.me {
-      align-self: flex-end;
-      background: #2563eb;
-    }
-
-    .meta {
-      font-size: 11px;
-      opacity: 0.72;
-      margin-bottom: 3px;
-    }
-
-    form {
-      display: flex;
-      gap: 8px;
-      padding: 10px;
-      border-top: 1px solid rgba(255, 255, 255, 0.12);
-    }
-
-    input {
-      flex: 1;
-      border: 0;
-      border-radius: 10px;
-      padding: 12px;
-      font-size: 16px;
-      outline: none;
-    }
-
-    button {
-      border: 0;
-      border-radius: 10px;
-      padding: 0 16px;
-      font-size: 15px;
-      cursor: pointer;
-      background: #2563eb;
-      color: white;
-    }
-
-    button:disabled {
-      opacity: 0.55;
-    }
-
-    .hidden {
-      display: none !important;
-    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, -apple-system, sans-serif; height: 100dvh; display: flex; flex-direction: column; background: #0f172a; color: #e5e7eb; }
+    header { padding: 12px 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.12); display: flex; align-items: center; gap: 10px; }
+    header strong { font-size: 15px; }
+    #roomLabel { opacity: 0.65; font-size: 12px; }
+    #nameBar { padding: 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.12); display: flex; gap: 8px; }
+    #nameBar input { max-width: 240px; }
+    main { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+    .msg { max-width: 85%; padding: 8px 10px; border-radius: 12px; background: rgba(255, 255, 255, 0.08); line-height: 1.35; white-space: pre-wrap; word-break: break-word; }
+    .msg.me { align-self: flex-end; background: #2563eb; }
+    .meta { font-size: 11px; opacity: 0.72; margin-bottom: 3px; }
+    form { display: flex; gap: 8px; padding: 10px; border-top: 1px solid rgba(255, 255, 255, 0.12); }
+    input { flex: 1; border: 0; border-radius: 10px; padding: 12px; font-size: 16px; outline: none; }
+    button { border: 0; border-radius: 10px; padding: 0 16px; font-size: 15px; cursor: pointer; background: #2563eb; color: white; }
+    button:disabled { opacity: 0.55; }
+    .hidden { display: none !important; }
+    
+    .msg-row { position: relative; }
+    .msg-actions { position: absolute; top: 4px; background: rgba(0,0,0,0.3); border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; z-index: 10; opacity: 0.6; }
+    .msg-actions:hover { opacity: 1; }
+    .msg-actions.me { left: 6px; }
+    .msg-actions.other { right: 6px; }
+    .msg-menu { position: absolute; top: 28px; right: 0; background: #334155; border-radius: 6px; padding: 4px; display: none; flex-direction: column; z-index: 20; min-width: 80px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+    .msg-menu.active { display: flex; }
+    .msg-menu button { background: none; border: none; color: white; padding: 6px; text-align: left; cursor: pointer; border-radius: 4px; width: 100%; font-size: 13px; }
+    .msg-menu button:hover { background: #475569; }
+    .reply-preview { background: rgba(255,255,255,0.1); border-left: 3px solid #2563eb; padding: 4px 8px; margin-bottom: 4px; border-radius: 4px; font-size: 12px; cursor: pointer; }
+    #replyBar { display: none; padding: 8px 14px; background: #1e293b; border-top: 1px solid #334155; font-size: 14px; position: relative; }
+    #replyBar.active { display: block; }
+    #replyBar .close { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 20px; opacity: 0.7; }
+    .edited { font-size: 10px; opacity: 0.6; margin-left: 6px; }
+    .highlight { animation: flash 1.5s; }
+    @keyframes flash { 0% { background: #49cbd0; } 100% { background: transparent; } }
   </style>
 </head>
 
@@ -127,20 +55,21 @@
 
   <main id="messages" aria-live="polite"></main>
 
+  <div id="replyBar">
+    Replying to <strong id="replyName"></strong>
+    <span class="close" onclick="cancelReply()">×</span>
+  </div>
+  
   <form id="chatForm" class="hidden">
     <input id="textInput" placeholder="Type a message" maxlength="1000" autocomplete="off" />
     <button id="sendBtn" type="submit">Send</button>
   </form>
-base
+
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 
   <script>
-    // -------------------------------------------------------
-    // PASTE YOUR FIREBASE CONFIG HERE
-    // -------------------------------------------------------
-    // Your web app's Firebase configuration
     const firebaseConfig = {
       apiKey: "AIzaSyAbiBOlaMX7OjPvx5efi0Z3MOddr94wgKQ",
       authDomain: "mini-chaty.firebaseapp.com",
@@ -151,14 +80,6 @@ base
       appId: "1:524920955180:web:3b9f8ff90e89a709388c89"
     };
 
-
-    // const params = new URLSearchParams(location.search);
-    // const room = (params.get("room") || "").trim().slice(0, 80);
-    // if (!room) {
-    //   document.body.innerHTML = "<p style='padding:20px;font-family:sans-serif;'>You need an invite link.</p>";
-    //   throw new Error("Missing room");
-    // }
-
     const params = new URLSearchParams(location.search);
     const room = (params.get("room") || "general").trim().slice(0, 80);
 
@@ -167,19 +88,20 @@ base
     const messagesRef = db.ref("rooms/" + room + "/messages");
 
     const messagesEl = document.getElementById("messages");
-    const nameBar = document.getElementById("nameBar");
     const chatForm = document.getElementById("chatForm");
     const textInput = document.getElementById("textInput");
     const sendBtn = document.getElementById("sendBtn");
     const roomLabel = document.getElementById("roomLabel");
     const header = document.querySelector("header");
+    const replyBar = document.getElementById("replyBar");
+    const replyName = document.getElementById("replyName");
 
     roomLabel.textContent = "room: " + room;
 
-    let myName = "";
-    let myUid = "";
-    let myAvatarType = "";
-    let myAvatarValue = "";
+    let myName = "", myUid = "", myAvatarType = "", myAvatarValue = "";
+    let messagesCache = {};
+    let replyingTo = null;
+    let editingId = null;
 
     function createAvatarEl(type, value, name) {
       const el = document.createElement("div");
@@ -200,87 +122,168 @@ base
       return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     }
 
-    function addMessage(data) {
-      const nearBottom = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 80;
-
+    // NEW: Separate rendering function so updates don't jump to the bottom
+    function renderMessage(data, msgId) {
       const row = document.createElement("div");
-      row.style.cssText = "display:flex; gap:8px; max-width:85%; align-items:flex-end;";
+      row.className = "msg-row";
+      row.id = "msg-" + msgId;
+      row.style.cssText = "display:flex; gap:8px; max-width:85%; align-items:flex-end; margin-bottom:4px;";
       
       const isMine = data.uid === myUid;
-      
-      if (isMine) {
-        row.style.marginLeft = "auto";
-        row.style.flexDirection = "row-reverse";
-      }
+      if (isMine) { row.style.marginLeft = "auto"; row.style.flexDirection = "row-reverse"; }
 
       const avatar = createAvatarEl(data.avatarType, data.avatarValue, data.name);
 
       const msgBox = document.createElement("div");
       msgBox.className = "msg" + (isMine ? " me" : "");
+      msgBox.style.position = "relative";
+
+      if (data.replyToId) {
+        const rep = document.createElement("div");
+        rep.className = "reply-preview";
+        rep.innerHTML = `<strong>${data.replyToName}</strong><br>${data.replyToText}`;
+        rep.onclick = () => {
+          const el = document.getElementById('msg-' + data.replyToId);
+          if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.classList.add('highlight'); setTimeout(()=>el.classList.remove('highlight'), 1500); }
+        };
+        msgBox.appendChild(rep);
+      }
 
       const meta = document.createElement("div");
       meta.className = "meta";
-      meta.textContent = `${data.name || "anon"} · ${timeLabel(data.ts)}`;
+      meta.innerHTML = `${data.name || "anon"} · ${timeLabel(data.ts)} ${data.edited ? '<span class="edited">(edited)</span>' : ''}`;
 
       const body = document.createElement("div");
       body.textContent = data.text || "";
 
       msgBox.appendChild(meta);
       msgBox.appendChild(body);
+      
+      const actions = document.createElement("div");
+      actions.className = "msg-actions " + (isMine ? "me" : "other");
+      actions.innerHTML = "⋮";
+      
+            const menu = document.createElement("div");
+      menu.className = "msg-menu";
+      
+      const replyBtn = document.createElement("button");
+      replyBtn.textContent = "Reply";
+      replyBtn.onclick = (e) => { e.stopPropagation(); startReply(msgId); };
+      menu.appendChild(replyBtn);
 
+      if (isMine) {
+        const editBtn = document.createElement("button");
+        editBtn.textContent = "Edit";
+        editBtn.onclick = (e) => { e.stopPropagation(); startEdit(msgId); };
+        menu.appendChild(editBtn);
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.textContent = "Delete";
+        deleteBtn.onclick = (e) => { e.stopPropagation(); deleteMsg(msgId); };
+        menu.appendChild(deleteBtn);
+      }
+      actions.appendChild(menu);
+      actions.onclick = (e) => { 
+        e.stopPropagation(); 
+        document.querySelectorAll('.msg-menu.active').forEach(m => m.classList.remove('active'));
+        menu.classList.toggle('active'); 
+      };
+
+      msgBox.appendChild(actions);
       row.appendChild(avatar);
       row.appendChild(msgBox);
-
-      messagesEl.appendChild(row);
-
-      if (nearBottom || isMine) {
-        messagesEl.scrollTop = messagesEl.scrollHeight;
-      }
+      
+      return row;
     }
 
+    function addMessage(data, msgId) {
+      messagesCache[msgId] = data;
+      const nearBottom = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 80;
+      const row = renderMessage(data, msgId);
+      messagesEl.appendChild(row);
+      const isMine = data.uid === myUid;
+      if (nearBottom || isMine) messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    window.startReply = (id) => {
+      const msg = messagesCache[id];
+      replyingTo = { id: id, name: msg.name, text: (msg.text || "").substring(0, 40) };
+      replyBar.classList.add("active");
+      replyName.textContent = msg.name;
+      document.querySelectorAll('.msg-menu.active').forEach(m => m.classList.remove('active'));
+      textInput.focus();
+    };
+
+    window.cancelReply = () => {
+      replyingTo = null;
+      replyBar.classList.remove("active");
+    };
+
+    window.startEdit = (id) => {
+      const msg = messagesCache[id];
+      editingId = id;
+      textInput.value = msg.text;
+      sendBtn.textContent = "Save";
+      cancelReply();
+      document.querySelectorAll('.msg-menu.active').forEach(m => m.classList.remove('active'));
+      textInput.focus();
+    };
+
+    window.deleteMsg = async (id) => {
+      document.querySelectorAll('.msg-menu.active').forEach(m => m.classList.remove('active'));
+      if(!confirm("Delete this message?")) return;
+      try {
+        await messagesRef.child(id).remove();
+        // FIXED: Removed the accidental typo that was breaking this
+        const el = document.getElementById("msg-" + id);
+        if(el) el.remove();
+        delete messagesCache[id];
+      } catch (err) {
+        alert("Delete failed: " + err.message);
+      }
+    };
+
+    document.body.onclick = () => {
+      document.querySelectorAll('.msg-menu.active').forEach(m => m.classList.remove('active'));
+    };
+
     firebase.auth().onAuthStateChanged(async (user) => {
-      if (!user) {
-        await firebase.auth().signInAnonymously();
-        return;
-      }
+      if (!user) { await firebase.auth().signInAnonymously(); return; }
       myUid = user.uid;
-
-      // Check if profile exists
       const snap = await db.ref('users/' + myUid).once('value');
-      if (!snap.exists()) {
-        // No profile, redirect to create one
-        window.location.href = 'profile.html';
-        return;
-      }
+      if (!snap.exists()) { window.location.href = 'profile.html'; return; }
 
-      // Profile exists, load it
       const profile = snap.val();
-      myName = profile.name;
-      myAvatarType = profile.avatarType;
-      myAvatarValue = profile.avatarValue;
+      myName = profile.name; myAvatarType = profile.avatarType; myAvatarValue = profile.avatarValue;
 
-      // Update header with profile
       header.innerHTML = "";
       const myAvatar = createAvatarEl(myAvatarType, myAvatarValue, myName);
       myAvatar.style.cursor = "pointer";
       myAvatar.onclick = () => window.location.href = 'profile.html';
 
       const nameDiv = document.createElement("strong");
-      nameDiv.textContent = myName;
-      nameDiv.style.fontSize = "15px";
+      nameDiv.textContent = myName; nameDiv.style.fontSize = "15px";
 
-      header.appendChild(myAvatar);
-      header.appendChild(nameDiv);
-      header.appendChild(roomLabel);
+      header.appendChild(myAvatar); header.appendChild(nameDiv); header.appendChild(roomLabel);
 
-      // Start chat
-      nameBar.classList.add("hidden");
+      document.getElementById("nameBar").classList.add("hidden");
       chatForm.classList.remove("hidden");
       textInput.focus();
 
-      messagesRef.orderByChild("ts").limitToLast(100).on("child_added", (snap) => {
-        const val = snap.val();
-        if (val) addMessage(val);
+      messagesRef.orderByChild("ts").limitToLast(100).on("child_added", (s) => addMessage(s.val(), s.key));
+      
+      // UPDATED: Uses replaceWith to update exactly in place
+      messagesRef.on("child_changed", (s) => {
+        const oldEl = document.getElementById("msg-" + s.key);
+        const newRow = renderMessage(s.val(), s.key);
+        messagesCache[s.key] = s.val();
+        if (oldEl) oldEl.replaceWith(newRow);
+      });
+      
+      messagesRef.on("child_removed", (s) => {
+        const el = document.getElementById("msg-" + s.key);
+        if (el) el.remove();
+        delete messagesCache[s.key];
       });
     });
 
@@ -288,27 +291,28 @@ base
       e.preventDefault();
       const text = textInput.value.trim();
       if (!text) return;
-
       sendBtn.disabled = true;
 
       try {
-        await messagesRef.push({
-          uid: myUid,
-          name: myName,
-          avatarType: myAvatarType,
-          avatarValue: myAvatarValue,
-          text: text,
-          ts: Date.now()
-        });
+        if (editingId) {
+          await messagesRef.child(editingId).update({ text: text, edited: true });
+          editingId = null;
+          sendBtn.textContent = "Send";
+        } else {
+          const newMsg = { uid: myUid, name: myName, avatarType: myAvatarType, avatarValue: myAvatarValue, text: text, ts: Date.now() };
+          if (replyingTo) {
+            newMsg.replyToId = replyingTo.id;
+            newMsg.replyToName = replyingTo.name;
+            newMsg.replyToText = replyingTo.text;
+          }
+          await messagesRef.push(newMsg);
+          cancelReply();
+        }
         textInput.value = "";
         textInput.focus();
-      } catch (err) {
-        alert("Send failed: " + err.message);
-      } finally {
-        sendBtn.disabled = false;
-      }
+      } catch (err) { alert("Failed: " + err.message); } 
+      finally { sendBtn.disabled = false; }
     });
-  
   </script>
 </body>
 </html>
