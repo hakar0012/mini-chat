@@ -424,16 +424,63 @@
       return row;
     }
 
-    function addMessage(data, msgId) {
+    function addMessage(data, msgId, prepend = false) {
       cacheProfile(data);
       messagesCache[msgId] = data;
-      const nearBottom = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 80;
       const row = renderMessage(data, msgId);
-      messagesEl.appendChild(row);
-      const isMine = data.uid === myUid;
-      if (nearBottom || isMine) messagesEl.scrollTop = messagesEl.scrollHeight;
-            updateOnlineStatus();
+
+      if (prepend) {
+        // Put old messages at the very top
+        messagesEl.insertBefore(row, messagesEl.firstChild);
+      } else {
+        // Put new messages at the bottom
+        const nearBottom = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 80;
+        messagesEl.appendChild(row);
+        const isMine = data.uid === myUid;
+        if (nearBottom || isMine) messagesEl.scrollTop = messagesEl.scrollHeight;
+      }
+      updateOnlineUI();
     }
+        let oldestTs = Infinity;
+    let newestTs = 0;
+    let isLoadingOlder = false;
+    let allOlderLoaded = false;
+    let newMsgListenerAttached = false;
+
+    function loadOlderMessages() {
+      if (isLoadingOlder || allOlderLoaded) return;
+      isLoadingOlder = true;
+      const prevScrollHeight = messagesEl.scrollHeight;
+
+      // Fetch the next 30 older messages
+      messagesRef.orderByChild("ts").endAt(oldestTs - 1).limitToLast(30).once("value", (snap) => {
+        if (snap.numChildren() === 0) {
+          allOlderLoaded = true; // Stop searching if we hit the beginning of time
+          isLoadingOlder = false;
+          return;
+        }
+
+        const messages = [];
+        snap.forEach(child => {
+          messages.push({ val: child.val(), key: child.key });
+          if (child.val().ts < oldestTs) oldestTs = child.val().ts;
+        });
+
+        // Add them to the top in the correct order
+        messages.reverse().forEach(m => addMessage(m.val, m.key, true));
+
+        // MAGIC: Keep the user's scroll position exactly where it was!
+        messagesEl.scrollTop = messagesEl.scrollHeight - prevScrollHeight;
+        isLoadingOlder = false;
+      });
+    }
+
+    // Trigger the load when you scroll to the very top
+    messagesEl.addEventListener('scroll', () => {
+      if (messagesEl.scrollTop === 0) {
+        loadOlderMessages();
+      }
+    });
 
     window.startReply = (id) => {
       const msg = messagesCache[id];
@@ -564,7 +611,28 @@
       chatForm.classList.remove("hidden");
       textInput.focus();
 
-      messagesRef.orderByChild("ts").limitToLast(100).on("child_added", (s) => addMessage(s.val(), s.key));
+      // 1. Load ONLY the latest 30 messages initially
+      messagesRef.orderByChild("ts").limitToLast(30).once("value", (snap) => {
+        const initialMsgs = [];
+        snap.forEach(child => {
+          initialMsgs.push({ val: child.val(), key: child.key });
+          if (child.val().ts < oldestTs) oldestTs = child.val().ts;
+          if (child.val().ts > newestTs) newestTs = child.val().ts;
+        });
+        
+        if (initialMsgs.length === 0) newestTs = Date.now(); // Fix for empty rooms
+
+        initialMsgs.forEach(m => addMessage(m.val, m.key, false));
+
+        // 2. NOW attach the real-time listener for brand new messages
+        if (!newMsgListenerAttached) {
+          messagesRef.orderByChild("ts").startAt(newestTs + 1).on("child_added", (s) => {
+            addMessage(s.val(), s.key, false);
+            if (s.val().ts > newestTs) newestTs = s.val().ts;
+          });
+          newMsgListenerAttached = true;
+        }
+      });
       
       // UPDATED: Uses replaceWith to update exactly in place
       messagesRef.on("child_changed", (s) => {
@@ -573,7 +641,7 @@
              cacheProfile(s.val());
         messagesCache[s.key] = s.val();
         if (oldEl) oldEl.replaceWith(newRow);
-        updateOnlineStatus();// give or take , doesn't matter
+        updateOnlineUI();
       });
       
       messagesRef.on("child_removed", (s) => {
