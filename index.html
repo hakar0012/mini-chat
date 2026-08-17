@@ -152,16 +152,13 @@ base
     };
 
 
-    // -------------------------------------------------------
+    // const params = new URLSearchParams(location.search);
+    // const room = (params.get("room") || "").trim().slice(0, 80);
+    // if (!room) {
+    //   document.body.innerHTML = "<p style='padding:20px;font-family:sans-serif;'>You need an invite link.</p>";
+    //   throw new Error("Missing room");
+    // }
 
-    if (!firebaseConfig.apiKey || firebaseConfig.apiKey.startsWith("PASTE_")) {
-      document.body.innerHTML =
-        "<p style='padding:20px;font-family:sans-serif;'>Open index.html and paste your Firebase config first.</p>";
-      throw new Error("Missing Firebase config");
-    }
-
-    // Use a room name from the URL:
-    // https://yourname.github.io/yourrepo/?room=mysecretroom
     const params = new URLSearchParams(location.search);
     const room = (params.get("room") || "general").trim().slice(0, 80);
 
@@ -171,67 +168,55 @@ base
 
     const messagesEl = document.getElementById("messages");
     const nameBar = document.getElementById("nameBar");
-    const nameInput = document.getElementById("nameInput");
-    const saveNameBtn = document.getElementById("saveName");
     const chatForm = document.getElementById("chatForm");
     const textInput = document.getElementById("textInput");
     const sendBtn = document.getElementById("sendBtn");
     const roomLabel = document.getElementById("roomLabel");
+    const header = document.querySelector("header");
 
     roomLabel.textContent = "room: " + room;
 
-    let myName = localStorage.getItem("chat_name") || "";
+    let myName = "";
+    let myUid = "";
+    let myAvatarType = "";
+    let myAvatarValue = "";
 
-    function ready() {
-      return myName.trim().length > 0;
-    }
-
-    function showChatUI() {
-      nameBar.classList.add("hidden");
-      chatForm.classList.remove("hidden");
-      textInput.focus();
-    }
-
-    function showNameUI() {
-      nameBar.classList.remove("hidden");
-      chatForm.classList.add("hidden");
-      nameInput.value = myName;
-      nameInput.focus();
-    }
-
-    function join() {
-      const n = nameInput.value.trim();
-      if (!n) {
-        nameInput.focus();
-        return;
+    function createAvatarEl(type, value, name) {
+      const el = document.createElement("div");
+      el.style.cssText = "width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:14px;flex-shrink:0;";
+      if (type === 'preset') {
+        el.textContent = value || '👤';
+        el.style.background = '#1e293b';
+      } else {
+        el.textContent = (name || '?').charAt(0).toUpperCase();
+        el.style.background = value || '#2563eb';
       }
-
-      myName = n;
-      localStorage.setItem("chat_name", myName);
-      showChatUI();
+      return el;
     }
-
-    saveNameBtn.addEventListener("click", join);
-
-    nameInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") join();
-    });
 
     function timeLabel(ts) {
       if (!ts) return "";
       const d = new Date(ts);
-      return d.toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit"
-      });
+      return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     }
 
     function addMessage(data) {
-      const nearBottom =
-        messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 80;
+      const nearBottom = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 80;
 
-      const div = document.createElement("div");
-      div.className = "msg" + ((data.name || "") === myName ? " me" : "");
+      const row = document.createElement("div");
+      row.style.cssText = "display:flex; gap:8px; max-width:85%; align-items:flex-end;";
+      
+      const isMine = data.uid === myUid;
+      
+      if (isMine) {
+        row.style.marginLeft = "auto";
+        row.style.flexDirection = "row-reverse";
+      }
+
+      const avatar = createAvatarEl(data.avatarType, data.avatarValue, data.name);
+
+      const msgBox = document.createElement("div");
+      msgBox.className = "msg" + (isMine ? " me" : "");
 
       const meta = document.createElement("div");
       meta.className = "meta";
@@ -240,61 +225,81 @@ base
       const body = document.createElement("div");
       body.textContent = data.text || "";
 
-      div.appendChild(meta);
-      div.appendChild(body);
+      msgBox.appendChild(meta);
+      msgBox.appendChild(body);
 
-      messagesEl.appendChild(div);
+      row.appendChild(avatar);
+      row.appendChild(msgBox);
 
-      const isMine = (data.name || "") === myName;
+      messagesEl.appendChild(row);
+
       if (nearBottom || isMine) {
         messagesEl.scrollTop = messagesEl.scrollHeight;
       }
     }
 
-    // Load latest 100 messages, then listen for new ones.
-    let chatStarted = false;
+    firebase.auth().onAuthStateChanged(async (user) => {
+      if (!user) {
+        await firebase.auth().signInAnonymously();
+        return;
+      }
+      myUid = user.uid;
 
-    firebase.auth().onAuthStateChanged((user) => {
-      if (!user || chatStarted) return;
+      // Check if profile exists
+      const snap = await db.ref('users/' + myUid).once('value');
+      if (!snap.exists()) {
+        // No profile, redirect to create one
+        window.location.href = 'profile.html';
+        return;
+      }
 
-      chatStarted = true;
+      // Profile exists, load it
+      const profile = snap.val();
+      myName = profile.name;
+      myAvatarType = profile.avatarType;
+      myAvatarValue = profile.avatarValue;
 
-      messagesRef
-        .orderByChild("ts")
-        .limitToLast(100)
-        .on("child_added", (snap) => {
-          const val = snap.val();
-          if (val) addMessage(val);
-        });
-    });
+      // Update header with profile
+      header.innerHTML = "";
+      const myAvatar = createAvatarEl(myAvatarType, myAvatarValue, myName);
+      myAvatar.style.cursor = "pointer";
+      myAvatar.onclick = () => window.location.href = 'profile.html';
 
-    firebase.auth().signInAnonymously().catch((err) => {
-      alert("Auth failed: " + err.message);
+      const nameDiv = document.createElement("strong");
+      nameDiv.textContent = myName;
+      nameDiv.style.fontSize = "15px";
+
+      header.appendChild(myAvatar);
+      header.appendChild(nameDiv);
+      header.appendChild(roomLabel);
+
+      // Start chat
+      nameBar.classList.add("hidden");
+      chatForm.classList.remove("hidden");
+      textInput.focus();
+
+      messagesRef.orderByChild("ts").limitToLast(100).on("child_added", (snap) => {
+        const val = snap.val();
+        if (val) addMessage(val);
+      });
     });
 
     chatForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-
-      if (!ready()) {
-        showNameUI();
-        return;
-      }
-
       const text = textInput.value.trim();
       if (!text) return;
 
       sendBtn.disabled = true;
 
       try {
-        if (!firebase.auth().currentUser) {
-          await firebase.auth().signInAnonymously();
-        }
         await messagesRef.push({
+          uid: myUid,
           name: myName,
+          avatarType: myAvatarType,
+          avatarValue: myAvatarValue,
           text: text,
           ts: Date.now()
         });
-
         textInput.value = "";
         textInput.focus();
       } catch (err) {
@@ -303,12 +308,7 @@ base
         sendBtn.disabled = false;
       }
     });
-
-    if (ready()) {
-      showChatUI();
-    } else {
-      showNameUI();
-    }
+  
   </script>
 </body>
 </html>
