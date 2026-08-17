@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Edit Profile</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: system-ui, -apple-system, sans-serif;
+      background: #0f172a; color: #e5e7eb;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 20px; min-height: 100vh;
+    }
+    .container { max-width: 400px; width: 100%; }
+    h1 { font-size: 20px; margin-bottom: 20px; text-align: center; }
+    
+    .avatar-preview {
+      width: 100px; height: 100px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 48px; font-weight: bold; margin: 0 auto 20px;
+      border: 3px solid rgba(255,255,255,0.1);
+    }
+    
+    .field { margin-bottom: 15px; }
+    label { display: block; font-size: 14px; margin-bottom: 5px; opacity: 0.8; }
+    
+    input[type="text"], input[type="color"] {
+      width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #334155;
+      background: #1e293b; color: #e5e7eb; font-size: 16px; box-sizing: border-box;
+    }
+    
+    .presets { display: flex; gap: 10px; flex-wrap: wrap; }
+    .preset {
+      width: 40px; height: 40px; border-radius: 50%; background: #1e293b;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px; cursor: pointer; border: 2px solid transparent;
+    }
+    .preset.selected { border-color: #2563eb; }
+    
+    button {
+      width: 100%; padding: 12px; border-radius: 8px; border: none;
+      background: #2563eb; color: white; font-size: 16px; cursor: pointer;
+      margin-top: 10px;
+    }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    
+    .error { color: #ef4444; font-size: 14px; margin-top: 5px; display: none; }
+    .back { text-align: center; margin-top: 20px; }
+    .back a { color: #60a5fa; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Edit Profile</h1>
+    <div id="avatarPreview" class="avatar-preview" style="background:#2563eb;">?</div>
+
+    <div class="field">
+      <label>Username</label>
+      <input type="text" id="nameInput" placeholder="Enter unique name" maxlength="20" autocomplete="off" />
+      <div class="error" id="nameError"></div>
+    </div>
+
+    <div class="field">
+      <label>Avatar Style</label>
+      <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px;">
+        <label style="margin:0; display:flex; align-items:center; gap:4px;">
+          <input type="radio" name="avatarType" value="initials" checked /> Initials
+        </label>
+        <label style="margin:0; display:flex; align-items:center; gap:4px;">
+          <input type="radio" name="avatarType" value="preset" /> Emoji
+        </label>
+      </div>
+
+      <div id="initialsOptions">
+        <label>Background Color</label>
+        <input type="color" id="colorInput" value="#2563eb" />
+      </div>
+
+      <div id="presetOptions" style="display:none;">
+        <label>Choose an Emoji</label>
+        <div class="presets" id="presetList"></div>
+      </div>
+    </div>
+
+    <button id="saveBtn">Save Profile</button>
+    <div class="error" id="saveError" style="text-align:center;"></div>
+
+    <div class="back">
+      <a href="index.html">Back to Chat</a>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
+  <script>
+    // -------------------------------------------------------
+    // PASTE YOUR FIREBASE CONFIG HERE 
+    // -------------------------------------------------------
+        // Your web app's Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyAbiBOlaMX7OjPvx5efi0Z3MOddr94wgKQ",
+      authDomain: "mini-chaty.firebaseapp.com",
+      databaseURL: "https://mini-chaty-default-rtdb.firebaseio.com",
+      projectId: "mini-chaty",
+      storageBucket: "mini-chaty.firebasestorage.app",
+      messagingSenderId: "524920955180",
+      appId: "1:524920955180:web:3b9f8ff90e89a709388c89"
+    };
+    // -------------------------------------------------------
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const PRESETS = ['🐱', '🐶', '🦊', '🐼', '🐸', '👻', '🤖', '👽', '🦄', '🐙'];
+    
+    const nameInput = document.getElementById('nameInput');
+    const nameError = document.getElementById('nameError');
+    const colorInput = document.getElementById('colorInput');
+    const avatarPreview = document.getElementById('avatarPreview');
+    const avatarTypeRadios = document.getElementsByName('avatarType');
+    const initialsOptions = document.getElementById('initialsOptions');
+    const presetOptions = document.getElementById('presetOptions');
+    const presetList = document.getElementById('presetList');
+    const saveBtn = document.getElementById('saveBtn');
+    const saveError = document.getElementById('saveError');
+
+    let currentProfile = null;
+    let selectedPreset = '🐱';
+
+    PRESETS.forEach(p => {
+      const div = document.createElement('div');
+      div.className = 'preset';
+      div.textContent = p;
+      div.onclick = () => {
+        selectedPreset = p;
+        document.querySelectorAll('.preset').forEach(el => el.classList.remove('selected'));
+        div.classList.add('selected');
+        updatePreview();
+      };
+      presetList.appendChild(div);
+    });
+
+    function updatePreview() {
+      const type = document.querySelector('input[name="avatarType"]:checked').value;
+      const name = nameInput.value.trim() || '?';
+      const color = colorInput.value;
+
+      if (type === 'initials') {
+        avatarPreview.textContent = name.charAt(0).toUpperCase() || '?';
+        avatarPreview.style.background = color;
+      } else {
+        avatarPreview.textContent = selectedPreset;
+        avatarPreview.style.background = '#1e293b';
+      }
+    }
+
+    nameInput.addEventListener('input', updatePreview);
+    colorInput.addEventListener('input', updatePreview);
+    
+    Array.from(avatarTypeRadios).forEach(r => r.addEventListener('change', () => {
+      if (r.value === 'initials') {
+        initialsOptions.style.display = 'block';
+        presetOptions.style.display = 'none';
+      } else {
+        initialsOptions.style.display = 'none';
+        presetOptions.style.display = 'block';
+      }
+      updatePreview();
+    }));
+
+    firebase.auth().onAuthStateChanged(async (user) => {
+      if (!user) {
+        await firebase.auth().signInAnonymously();
+        return;
+      }
+
+      const snap = await db.ref('users/' + user.uid).once('value');
+      if (snap.exists()) {
+        currentProfile = snap.val();
+        nameInput.value = currentProfile.name || '';
+        
+        if (currentProfile.avatarType === 'preset') {
+          document.querySelector('input[name="avatarType"][value="preset"]').checked = true;
+          initialsOptions.style.display = 'none';
+          presetOptions.style.display = 'block';
+          selectedPreset = currentProfile.avatarValue || '🐱';
+          document.querySelectorAll('.preset').forEach(el => {
+            if(el.textContent === selectedPreset) el.classList.add('selected');
+          });
+        } else {
+          colorInput.value = currentProfile.avatarValue || '#2563eb';
+        }
+        updatePreview();
+      } else {
+        updatePreview();
+      }
+    });
+
+    saveBtn.onclick = async () => {
+      saveError.style.display = 'none';
+      nameError.style.display = 'none';
+
+      const name = nameInput.value.trim();
+      if (!name) {
+        nameError.textContent = 'Name cannot be empty.';
+        nameError.style.display = 'block';
+        return;
+      }
+      if (name.length < 3) {
+        nameError.textContent = 'Name must be at least 3 characters.';
+        nameError.style.display = 'block';
+        return;
+      }
+
+      const type = document.querySelector('input[name="avatarType"]:checked').value;
+      const value = type === 'initials' ? colorInput.value : selectedPreset;
+
+      const uid = firebase.auth().currentUser.uid;
+      const lowerName = name.toLowerCase();
+
+      saveBtn.disabled = true;
+
+      try {
+        const usernameSnap = await db.ref('usernames/' + lowerName).once('value');
+        if (usernameSnap.exists() && usernameSnap.val().uid !== uid) {
+          nameError.textContent = 'This name is already taken.';
+          nameError.style.display = 'block';
+          saveBtn.disabled = false;
+          return;
+        }
+
+        if (currentProfile && currentProfile.name) {
+          const oldLowerName = currentProfile.name.toLowerCase();
+          if (oldLowerName !== lowerName) {
+            await db.ref('usernames/' + oldLowerName).remove();
+          }
+        }
+
+        const updates = {};
+        updates['users/' + uid] = {
+          name: name,
+          avatarType: type,
+          avatarValue: value,
+          updatedAt: firebase.database.ServerValue.TIMESTAMP
+        };
+        updates['usernames/' + lowerName] = { uid: uid };
+
+        await db.ref().update(updates);
+
+        localStorage.setItem('chat_name', name);
+        window.location.href = 'index.html';
+
+      } catch (err) {
+        saveError.textContent = 'Error saving: ' + err.message;
+        saveError.style.display = 'block';
+      } finally {
+        saveBtn.disabled = false;
+      }
+    };
+
+    updatePreview();
+  </script>
+</body>
+</html>
