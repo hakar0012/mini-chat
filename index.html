@@ -121,7 +121,70 @@
       const d = new Date(ts);
       return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     }
-
+        function parseMessageText(text) {
+      if (!text) return document.createTextNode("");
+      
+      const urlRegex = /(https?:\/\/[^\s]+)/g;
+      const isUrlRegex = /^https?:\/\/[^\s]+$/i;
+      const parts = text.split(urlRegex);
+      const fragment = document.createDocumentFragment();
+      
+      parts.forEach(part => {
+        if (isUrlRegex.test(part)) {
+          const lowerPart = part.toLowerCase();
+          const isImage = /\.(jpe?g|png|gif|webp|bmp|svg)(\?.*)?$/.test(lowerPart);
+          const isVideo = /\.(mp4|webm|ogg|mov)(\?.*)?$/.test(lowerPart);
+          
+          if (isImage) {
+            const container = document.createElement("div");
+            container.style.marginTop = "6px";
+            const img = document.createElement("img");
+            img.src = part;
+            img.style.maxWidth = "100%";
+            img.style.maxHeight = "300px";
+            img.style.borderRadius = "8px";
+            img.style.display = "block";
+            img.loading = "lazy";
+            img.onerror = () => { // Fallback if it's not actually an image
+              container.innerHTML = "";
+              const a = document.createElement("a");
+              a.href = part; a.target = "_blank"; a.rel = "noopener noreferrer";
+              a.textContent = part; a.style.color = "#60a5fa"; a.style.wordBreak = "break-all";
+              container.appendChild(a);
+            };
+            container.appendChild(img);
+            fragment.appendChild(container);
+          } else if (isVideo) {
+            const container = document.createElement("div");
+            container.style.marginTop = "6px";
+            const video = document.createElement("video");
+            video.src = part;
+            video.controls = true;
+            video.style.maxWidth = "100%";
+            video.style.maxHeight = "300px";
+            video.style.borderRadius = "8px";
+            video.onerror = () => {
+              container.innerHTML = "";
+              const a = document.createElement("a");
+              a.href = part; a.target = "_blank"; a.rel = "noopener noreferrer";
+              a.textContent = part; a.style.color = "#60a5fa"; a.style.wordBreak = "break-all";
+              container.appendChild(a);
+            };
+            container.appendChild(video);
+            fragment.appendChild(container);
+          } else {
+            const a = document.createElement("a");
+            a.href = part; a.target = "_blank"; a.rel = "noopener noreferrer";
+            a.textContent = part; a.style.color = "#60a5fa"; a.style.textDecoration = "underline"; a.style.wordBreak = "break-all";
+            fragment.appendChild(a);
+          }
+        } else if (part.length > 0) {
+          fragment.appendChild(document.createTextNode(part));
+        }
+      });
+      
+      return fragment;
+    }
     // NEW: Separate rendering function so updates don't jump to the bottom
     function renderMessage(data, msgId) {
       const row = document.createElement("div");
@@ -154,7 +217,7 @@
       meta.innerHTML = `${data.name || "anon"} · ${timeLabel(data.ts)} ${data.edited ? '<span class="edited">(edited)</span>' : ''}`;
 
       const body = document.createElement("div");
-      body.textContent = data.text || "";
+      body.appendChild(parseMessageText(data.text));
 
       msgBox.appendChild(meta);
       msgBox.appendChild(body);
