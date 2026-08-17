@@ -134,6 +134,7 @@
 base
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 
   <script>
     // -------------------------------------------------------
@@ -244,13 +245,25 @@ const firebaseConfig = {
     }
 
     // Load latest 100 messages, then listen for new ones.
-    messagesRef
-      .orderByChild("ts")
-      .limitToLast(100)
-      .on("child_added", (snap) => {
-        const val = snap.val();
-        if (val) addMessage(val);
-      });
+    let chatStarted = false;
+
+    firebase.auth().onAuthStateChanged((user) => {
+      if (!user || chatStarted) return;
+
+      chatStarted = true;
+
+      messagesRef
+        .orderByChild("ts")
+        .limitToLast(100)
+        .on("child_added", (snap) => {
+          const val = snap.val();
+          if (val) addMessage(val);
+        });
+    });
+
+    firebase.auth().signInAnonymously().catch((err) => {
+      alert("Auth failed: " + err.message);
+    });
 
     chatForm.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -266,6 +279,9 @@ const firebaseConfig = {
       sendBtn.disabled = true;
 
       try {
+        if (!firebase.auth().currentUser) {
+          await firebase.auth().signInAnonymously();
+        }
         await messagesRef.push({
           name: myName,
           text: text,
