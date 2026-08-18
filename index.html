@@ -525,7 +525,10 @@
     };
 
     firebase.auth().onAuthStateChanged(async (user) => {
-      if (!user) { await firebase.auth().signInAnonymously(); return; }
+      if (!user || user.isAnonymous) {
+        window.location.href = 'login.html';
+        return;
+      }
       myUid = user.uid;
       const myPresenceRef = db.ref("presence/" + myUid);
       myPresenceRef.set(true);
@@ -605,6 +608,16 @@
       header.appendChild(roomSpan);
       header.appendChild(roomBtn);
       header.appendChild(onlineCountEl);
+
+      // Add Logout Button to Header
+      const logoutBtn = document.createElement("button");
+      logoutBtn.textContent = "Logout";
+      logoutBtn.style.cssText = "background:transparent; border:1px solid rgba(255,255,255,0.2); color:#e5e7eb; padding:4px 10px; border-radius:6px; font-size:12px; cursor:pointer; margin-left:10px; transition:0.2s;";
+      logoutBtn.onmouseover = () => { logoutBtn.style.background = '#ef4444'; logoutBtn.style.borderColor = '#ef4444'; };
+      logoutBtn.onmouseout = () => { logoutBtn.style.background = 'transparent'; logoutBtn.style.borderColor = 'rgba(255,255,255,0.2)'; };
+      logoutBtn.onclick = () => firebase.auth().signOut().then(() => location.href = 'login.html');
+      
+      header.appendChild(logoutBtn);
       updateOnlineUI();
 
       document.getElementById("nameBar").classList.add("hidden");
