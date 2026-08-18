@@ -742,7 +742,11 @@
         formData.append("reqtype", "fileupload");
         formData.append("file", file);
 
-        const res = await fetch("https://catbox.moe/user/api.php", {
+        // Use CORS proxy since catbox.moe doesn't allow cross-origin requests
+        const proxyUrl = "https://corsproxy.io/?";
+        const targetUrl = "https://catbox.moe/user/api.php";
+        
+        const res = await fetch(proxyUrl + encodeURIComponent(targetUrl), {
           method: "POST",
           body: formData,
         });
