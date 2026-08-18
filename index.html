@@ -95,7 +95,13 @@
   
   <form id="chatForm" class="hidden">
     <input type="file" id="imageInput" accept="image/*" style="display: none;" />
-    <button type="button" id="attachBtn" title="Attach Image" style="padding: 8px 12px; background: rgba(37,99,235,0.2); border: 1px solid #2563eb; color: #93c5fd; border-radius: 10px; cursor: pointer; font-size: 20px; transition: 0.2s;">📎</button>
+    <div style="position: relative;">
+      <button type="button" id="attachBtn" title="Attach" style="padding: 8px 12px; background: rgba(37,99,235,0.2); border: 1px solid #2563eb; color: #93c5fd; border-radius: 10px; cursor: pointer; font-size: 20px; transition: 0.2s;">+</button>
+      <div id="attachMenu" class="hidden" style="position: absolute; bottom: 100%; right: 0; margin-bottom: 8px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 50; min-width: 140px;">
+        <button type="button" id="attachImageBtn" style="width: 100%; padding: 10px 12px; background: none; border: none; color: #e5e7eb; text-align: left; border-radius: 6px; cursor: pointer; font-size: 14px; display: flex; align-items: center; gap: 8px;">🖼️ Image</button>
+        <button type="button" id="attachGifBtn" style="width: 100%; padding: 10px 12px; background: none; border: none; color: #e5e7eb; text-align: left; border-radius: 6px; cursor: pointer; font-size: 14px; display: flex; align-items: center; gap: 8px;">🎞️ GIF</button>
+      </div>
+    </div>
     <input id="textInput" placeholder="Type a message" maxlength="1000" autocomplete="off" />
     <button id="sendBtn" type="submit">Send</button>
   </form>
@@ -716,9 +722,27 @@
       else if (names.length === 2) indicator.textContent = `${names[0]} and ${names[1]} are typing...`;
       else indicator.textContent = `${names[0]} and ${names.length - 1} others are typing...`;
     });
-    attachBtn.onclick = () => imageInput.click();
+    attachBtn.onclick = (e) => {
+      e.stopPropagation();
+      attachMenu.classList.toggle("hidden");
+    };
 
-    // imgbb API key - get free key at https://api.imgbb.com/
+    document.addEventListener("click", () => attachMenu.classList.add("hidden"));
+
+    attachImageBtn.onclick = (e) => {
+      e.stopPropagation();
+      attachMenu.classList.add("hidden");
+      imageInput.click();
+    };
+
+    // GIF search using klipy (Giphy-compatible API)
+    attachGifBtn.onclick = (e) => {
+      e.stopPropagation();
+      attachMenu.classList.add("hidden");
+      openGifPicker();
+    };
+
+    // imgbb API key
     const IMGBB_API_KEY = "94b9d72bc5e7b37b1da9d1f1732c2142";
 
     imageInput.onchange = async () => {
@@ -744,7 +768,7 @@
         const formData = new FormData();
         formData.append("image", file);
 
-        const res = await fetch(`https://api.imgbb.com/1/upload?key=${94b9d72bc5e7b37b1da9d1f1732c2142}`, {
+        const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
           method: "POST",
           body: formData,
         });
@@ -759,10 +783,83 @@
       } finally {
         sendBtn.disabled = false;
         attachBtn.disabled = false;
-        attachBtn.textContent = "📎";
+        attachBtn.textContent = "+";
         textInput.placeholder = "Type a message";
         imageInput.value = "";
       }
+    };
+
+    // GIF picker using klipy (public Giphy-compatible API)
+    async function openGifPicker() {
+      const query = prompt("Search GIFs:");
+      if (!query) return;
+
+      sendBtn.disabled = true;
+      attachBtn.disabled = true;
+      textInput.placeholder = "Searching GIFs...";
+
+      try {
+        // klipy API - no key needed, CORS enabled
+        const res = await fetch(`https://api.klipy.com/v1/gifs/search?q=${encodeURIComponent(query)}&limit=20`);
+        const data = await res.json();
+
+        if (!data.data || data.data.length === 0) {
+          alert("No GIFs found");
+          return;
+        }
+
+        // Show modal with GIF results
+        showGifModal(data.data);
+      } catch (err) {
+        alert("GIF search failed: " + err.message);
+      } finally {
+        sendBtn.disabled = false;
+        attachBtn.disabled = false;
+        textInput.placeholder = "Type a message";
+      }
+    }
+
+    function showGifModal(gifs) {
+      // Remove existing modal
+      const existing = document.getElementById("gifModal");
+      if (existing) existing.remove();
+
+      const modal = document.createElement("div");
+      modal.id = "gifModal";
+      modal.className = "modal";
+      modal.innerHTML = `
+        <div class="modal-content" style="max-width: 400px; max-height: 70vh;">
+          <div class="modal-header">
+            <strong>Search Results</strong>
+            <span class="close-modal" onclick="closeGifModal()">×</span>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; max-height: 50vh; overflow-y: auto;">
+            ${gifs.map(gif => `
+              <img src="${gif.images?.downsized?.url || gif.images?.fixed_width?.url || gif.url}" 
+                   alt="${gif.title || 'GIF'}" 
+                   style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; cursor: pointer; border: 2px solid transparent;"
+                   onclick="selectGif('${gif.images?.downsized?.url || gif.images?.fixed_width?.url || gif.url}')"
+                   onmouseover="this.style.borderColor='#2563eb'"
+                   onmouseout="this.style.borderColor='transparent'">
+            `).join('')}
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+      
+      // Close on backdrop click
+      modal.onclick = (e) => { if (e.target === modal) closeGifModal(); };
+    }
+
+    window.closeGifModal = () => {
+      const modal = document.getElementById("gifModal");
+      if (modal) modal.remove();
+    };
+
+    window.selectGif = (url) => {
+      textInput.value = url;
+      textInput.focus();
+      closeGifModal();
     };
 
     chatForm.addEventListener("submit", async (e) => {
