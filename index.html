@@ -718,9 +718,8 @@
     });
     attachBtn.onclick = () => imageInput.click();
 
-    // Cloudinary config - REPLACE THESE WITH YOUR OWN
-    const CLOUDINARY_CLOUD_NAME = "your_cloud_name";
-    const CLOUDINARY_UPLOAD_PRESET = "your_unsigned_preset";
+    // imgbb API key - get free key at https://api.imgbb.com/
+    const IMGBB_API_KEY = "YOUR_IMGBB_API_KEY_HERE";
 
     imageInput.onchange = async () => {
       const file = imageInput.files[0];
@@ -730,8 +729,8 @@
         imageInput.value = "";
         return;
       }
-      if (file.size > 10 * 1024 * 1024) {
-        alert("File too large. Max 10MB.");
+      if (file.size > 32 * 1024 * 1024) {
+        alert("File too large. Max 32MB (imgbb limit).");
         imageInput.value = "";
         return;
       }
@@ -743,18 +742,17 @@
 
       try {
         const formData = new FormData();
-        formData.append("file", file);
-        formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+        formData.append("image", file);
 
-        const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+        const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
           method: "POST",
           body: formData,
         });
 
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error?.message || "Upload failed");
+        if (!data.success) throw new Error(data.error?.message || "Upload failed");
 
-        textInput.value = data.secure_url;
+        textInput.value = data.data.url;
         textInput.focus();
       } catch (err) {
         alert("Upload failed: " + err.message);
