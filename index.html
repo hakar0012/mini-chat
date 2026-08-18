@@ -718,6 +718,10 @@
     });
     attachBtn.onclick = () => imageInput.click();
 
+    // Cloudinary config - REPLACE THESE WITH YOUR OWN
+    const CLOUDINARY_CLOUD_NAME = "your_cloud_name";
+    const CLOUDINARY_UPLOAD_PRESET = "your_unsigned_preset";
+
     imageInput.onchange = async () => {
       const file = imageInput.files[0];
       if (!file) return;
@@ -726,8 +730,8 @@
         imageInput.value = "";
         return;
       }
-      if (file.size > 200 * 1024 * 1024) {
-        alert("File too large. Max 200MB.");
+      if (file.size > 10 * 1024 * 1024) {
+        alert("File too large. Max 10MB.");
         imageInput.value = "";
         return;
       }
@@ -739,22 +743,18 @@
 
       try {
         const formData = new FormData();
-        formData.append("reqtype", "fileupload");
         formData.append("file", file);
+        formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
 
-        // Use CORS proxy since catbox.moe doesn't allow cross-origin requests
-        const proxyUrl = "https://api.allorigins.win/raw?url=";
-        const targetUrl = "https://catbox.moe/user/api.php";
-        
-        const res = await fetch(proxyUrl + encodeURIComponent(targetUrl), {
+        const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
           method: "POST",
           body: formData,
         });
 
-        const url = await res.text();
-        if (!url.startsWith("http")) throw new Error("Upload failed: " + url);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error?.message || "Upload failed");
 
-        textInput.value = url;
+        textInput.value = data.secure_url;
         textInput.focus();
       } catch (err) {
         alert("Upload failed: " + err.message);
