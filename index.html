@@ -94,6 +94,8 @@
   </div>
   
   <form id="chatForm" class="hidden">
+    <input type="file" id="imageInput" accept="image/*" style="display: none;" />
+    <button type="button" id="attachBtn" title="Attach Image" style="padding: 0 12px; background: transparent; border: 1px solid rgba(255,255,255,0.2); color: #e5e7eb; border-radius: 10px; cursor: pointer; font-size: 18px;">📎</button>
     <input id="textInput" placeholder="Type a message" maxlength="1000" autocomplete="off" />
     <button id="sendBtn" type="submit">Send</button>
   </form>
@@ -128,6 +130,8 @@
     const header = document.querySelector("header");
     const replyBar = document.getElementById("replyBar");
     const replyName = document.getElementById("replyName");
+    const imageInput = document.getElementById("imageInput");
+    const attachBtn = document.getElementById("attachBtn");
 
     roomLabel.textContent = "room: " + room;
 
@@ -712,6 +716,53 @@
       else if (names.length === 2) indicator.textContent = `${names[0]} and ${names[1]} are typing...`;
       else indicator.textContent = `${names[0]} and ${names.length - 1} others are typing...`;
     });
+    attachBtn.onclick = () => imageInput.click();
+
+    imageInput.onchange = async () => {
+      const file = imageInput.files[0];
+      if (!file) return;
+      if (!file.type.startsWith("image/")) {
+        alert("Please select an image file.");
+        imageInput.value = "";
+        return;
+      }
+      if (file.size > 200 * 1024 * 1024) {
+        alert("File too large. Max 200MB.");
+        imageInput.value = "";
+        return;
+      }
+
+      sendBtn.disabled = true;
+      attachBtn.disabled = true;
+      attachBtn.textContent = "⏳";
+      textInput.placeholder = "Uploading...";
+
+      try {
+        const formData = new FormData();
+        formData.append("reqtype", "fileupload");
+        formData.append("file", file);
+
+        const res = await fetch("https://catbox.moe/user/api.php", {
+          method: "POST",
+          body: formData,
+        });
+
+        const url = await res.text();
+        if (!url.startsWith("http")) throw new Error("Upload failed: " + url);
+
+        textInput.value = url;
+        textInput.focus();
+      } catch (err) {
+        alert("Upload failed: " + err.message);
+      } finally {
+        sendBtn.disabled = false;
+        attachBtn.disabled = false;
+        attachBtn.textContent = "📎";
+        textInput.placeholder = "Type a message";
+        imageInput.value = "";
+      }
+    };
+
     chatForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const text = textInput.value.trim();
