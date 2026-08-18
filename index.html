@@ -743,7 +743,7 @@
         formData.append("file", file);
 
         // Use CORS proxy since catbox.moe doesn't allow cross-origin requests
-        const proxyUrl = "https://corsproxy.io/?";
+        const proxyUrl = "https://api.allorigins.win/raw?url=";
         const targetUrl = "https://catbox.moe/user/api.php";
         
         const res = await fetch(proxyUrl + encodeURIComponent(targetUrl), {
