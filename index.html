@@ -46,6 +46,28 @@
     .close-modal { cursor: pointer; font-size: 22px; opacity: 0.8; }
     .online-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
     .online-item:last-child { border-bottom: none; }
+
+    /* Room Panel - Slide from left */
+    .room-panel { position: fixed; top: 0; left: 0; width: 280px; height: 100vh; background: #1e293b; z-index: 200; transform: translateX(-100%); transition: transform 0.3s ease; box-shadow: 4px 0 20px rgba(0,0,0,0.4); display: flex; flex-direction: column; }
+    .room-panel.open { transform: translateX(0); }
+    .room-panel-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.3); z-index: 199; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s ease; }
+    .room-panel-overlay.open { opacity: 1; visibility: visible; }
+    .room-panel-header { padding: 16px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; }
+    .room-panel-header h3 { margin: 0; font-size: 16px; }
+    .room-panel-close { background: none; border: none; color: #94a3b8; font-size: 24px; cursor: pointer; padding: 4px; line-height: 1; }
+    .room-panel-close:hover { color: #e5e7eb; }
+    .room-panel-content { flex: 1; overflow-y: auto; padding: 16px; }
+    .room-panel-input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #e5e7eb; font-size: 14px; margin-bottom: 12px; box-sizing: border-box; outline: none; }
+    .room-panel-input:focus { border-color: #2563eb; }
+    .room-panel-btn { width: 100%; padding: 12px; border-radius: 8px; border: none; background: #2563eb; color: white; font-size: 14px; cursor: pointer; margin-bottom: 16px; }
+    .room-panel-btn:hover { background: #1d4ed8; }
+    .room-panel-section { margin-bottom: 16px; }
+    .room-panel-section-label { font-size: 11px; opacity: 0.6; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .room-panel-item { padding: 12px 16px; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; transition: background 0.15s; }
+    .room-panel-item:hover { background: #334155; }
+    .room-panel-item.active { background: #2563eb; }
+    .room-panel-item-name { font-size: 14px; }
+    .room-panel-item-indicator { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; }
       .reaction-pill {
       display: inline-flex; align-items: center; gap: 4px;
       background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
@@ -161,26 +183,45 @@
     }
     saveRoom(room); // Save current room on load
 
-    window.toggleRoomModal = () => {
-        document.getElementById('roomModal').classList.toggle('hidden');
-        if (!document.getElementById('roomModal').classList.contains('hidden')) renderRoomList();
-    };
+    function toggleRoomPanel() {
+        const panel = document.getElementById('roomPanel');
+        const overlay = document.getElementById('roomPanelOverlay');
+        const isOpen = panel.classList.toggle('open');
+        overlay.classList.toggle('open', isOpen);
+        if (isOpen) renderRoomPanel();
+    }
+
+    function closeRoomPanel() {
+        document.getElementById('roomPanel').classList.remove('open');
+        document.getElementById('roomPanelOverlay').classList.remove('open');
+    }
+
     window.joinNewRoom = () => {
         const input = document.getElementById('newRoomInput');
         const name = input.value.trim().toLowerCase().replace(/\s+/g, '-');
         if (name) {
             saveRoom(name);
-            window.location.search = '?room=' + encodeURIComponent(name);
+            input.value = '';
+            renderRoomPanel();
+            // Don't close panel - let user switch rooms
         }
     };
-    function renderRoomList() {
-        const list = document.getElementById('roomList');
+
+    function renderRoomPanel() {
+        const list = document.getElementById('roomPanelList');
         list.innerHTML = '';
         getRooms().forEach(r => {
             const div = document.createElement('div');
-            div.className = 'room-list-item' + (r === room ? ' active' : '');
-            div.innerHTML = `<span># ${r}</span>`;
-            div.onclick = () => { if (r !== room) window.location.search = '?room=' + encodeURIComponent(r); };
+            div.className = 'room-panel-item' + (r === room ? ' active' : '');
+            div.innerHTML = `<span class="room-panel-item-name"># ${r}</span>`;
+            if (r === room) div.innerHTML += '<span class="room-panel-item-indicator"></span>';
+            div.onclick = () => { 
+                if (r !== room) {
+                    window.location.search = '?room=' + encodeURIComponent(r);
+                } else {
+                    closeRoomPanel();
+                }
+            };
             list.appendChild(div);
         });
     }
@@ -611,7 +652,7 @@
       roomBtn.className = "room-btn";
       roomBtn.innerHTML = "🚪";
       roomBtn.title = "Switch Rooms";
-      roomBtn.onclick = toggleRoomModal;
+      roomBtn.onclick = toggleRoomPanel;
 
       header.appendChild(myAvatar); 
       header.appendChild(nameDiv); 
@@ -964,16 +1005,20 @@
       <div id="onlineList"></div>
     </div>
   </div>
-    <div id="roomModal" class="modal hidden">
-    <div class="modal-content">
-      <div class="modal-header">
-        <strong>Rooms</strong>
-        <span class="close-modal" onclick="toggleRoomModal()">×</span>
+    <!-- Room Panel - Slides from left -->
+  <div id="roomPanelOverlay" class="room-panel-overlay" onclick="closeRoomPanel()"></div>
+  <div id="roomPanel" class="room-panel">
+    <div class="room-panel-header">
+      <h3>Rooms</h3>
+      <button class="room-panel-close" onclick="closeRoomPanel()">×</button>
+    </div>
+    <div class="room-panel-content">
+      <input type="text" id="newRoomInput" class="room-panel-input" placeholder="New room name..." onkeydown="if(event.key==='Enter') joinNewRoom()" />
+      <button class="room-panel-btn" onclick="joinNewRoom()">Join / Create</button>
+      <div class="room-panel-section">
+        <div class="room-panel-section-label">Recent Rooms</div>
+        <div id="roomPanelList"></div>
       </div>
-      <input type="text" id="newRoomInput" placeholder="New room name..." style="width:100%; padding:10px; border-radius:6px; border:1px solid #334155; background:#0f172a; color:white; margin-bottom:10px; box-sizing:border-box;" />
-      <button onclick="joinNewRoom()" style="width:100%; margin-bottom:15px;">Join / Create</button>
-      <div style="font-size:12px; opacity:0.6; margin-bottom:8px;">Recent Rooms:</div>
-      <div id="roomList"></div>
     </div>
   </div>
 </body>
