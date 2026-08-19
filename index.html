@@ -782,7 +782,10 @@
       }
     };
 
-    // GIF picker using klipy (public Giphy-compatible API) - Discord-style panel
+    // GIF picker using Klipy API - Discord-style panel
+    const KLIPY_API_KEY = "qonfBVMFL4S3UGx546UVIJ6g6mvWM51F7RYKePDE78JIVs9kGV5DIwRrgPftFuBr";
+    const KLIPY_BASE_URL = `https://api.klipy.com/api/v1/${KLIPY_API_KEY}/gifs`;
+    
     let gifSearchDebounce = null;
     let currentGifQuery = "";
     let gifModal = null;
@@ -818,7 +821,7 @@
             <div style="grid-column: 1 / -1; text-align: center; opacity: 0.5; padding: 20px;">Loading...</div>
           </div>
           <div style="padding: 8px 12px; border-top: 1px solid #334155; font-size: 11px; opacity: 0.5; text-align: center;">
-            Powered by Tenor
+            Powered by Klipy
           </div>
         </div>
       `;
@@ -864,28 +867,29 @@
       gridEl.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; opacity: 0.5; padding: 20px;">Loading...</div>';
       
       try {
-        // Using Tenor API (more reliable, no key needed for basic usage)
         const url = query 
-          ? `https://tenor.googleapis.com/v2/search?q=${encodeURIComponent(query)}&limit=30&media_filter=gif&key=AIZA_SY_DEMO_KEY`
-          : `https://tenor.googleapis.com/v2/featured?limit=30&media_filter=gif&key=AIZA_SY_DEMO_KEY`;
+          ? `${KLIPY_BASE_URL}/search?q=${encodeURIComponent(query)}&limit=30`
+          : `${KLIPY_BASE_URL}/trending?limit=30`;
         
         const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
 
-        if (!data.results || data.results.length === 0) {
+        const results = data.results || data;
+        
+        if (!results || results.length === 0) {
           gridEl.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; opacity: 0.5; padding: 20px;">No GIFs found</div>';
           return;
         }
 
-        gridEl.innerHTML = data.results.map(gif => {
-          const media = gif.media_formats?.gif || gif.media_formats?.tinygif || gif.media_formats?.nanogif;
-          const gifUrl = media?.url || gif.url;
-          const previewUrl = gif.media_formats?.tinygif?.url || gif.media_formats?.nanogif?.url || media?.url || gifUrl;
+        gridEl.innerHTML = results.map(gif => {
+          const gifUrl = gif.media?.[0]?.url || gif.url || gif.src;
+          const previewUrl = gif.media?.[0]?.preview_url || gif.media?.[0]?.url || gif.preview_url || gif.thumbnail_url || gifUrl;
+          const description = gif.content_description || gif.title || 'GIF';
           return `
             <img src="${previewUrl}" 
                  data-full="${gifUrl}"
-                 alt="${(gif.content_description || 'GIF').replace(/'/g, '&apos;')}" 
+                 alt="${description.replace(/'/g, '&apos;')}" 
                  style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; cursor: pointer; border: 2px solid transparent; transition: border 0.1s;"
                  onclick="selectGif(this.dataset.full)"
                  onmouseover="this.style.borderColor='#2563eb'"
