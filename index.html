@@ -904,10 +904,27 @@
     }
 
     window.selectGif = (url) => {
-      textInput.value = url;
-      textInput.focus();
       if (gifModal) gifModal.remove();
       gifModal = null;
+      
+      // Send GIF immediately as a message
+      if (!myUid) return;
+      
+      const newMsg = { 
+        uid: myUid, 
+        name: myName, 
+        avatarType: myAvatarType, 
+        avatarValue: myAvatarValue, 
+        text: url, 
+        ts: Date.now() 
+      };
+      if (replyingTo) {
+        newMsg.replyToId = replyingTo.id;
+        newMsg.replyToName = replyingTo.name;
+        newMsg.replyToText = replyingTo.text;
+      }
+      messagesRef.push(newMsg);
+      cancelReply();
     };
 
     chatForm.addEventListener("submit", async (e) => {
