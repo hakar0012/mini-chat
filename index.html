@@ -735,13 +735,6 @@
       imageInput.click();
     };
 
-    // GIF search using klipy (Giphy-compatible API)
-    attachGifBtn.onclick = (e) => {
-      e.stopPropagation();
-      attachMenu.classList.add("hidden");
-      openGifPicker();
-    };
-
     // imgbb API key
     const IMGBB_API_KEY = "94b9d72bc5e7b37b1da9d1f1732c2142";
 
@@ -789,77 +782,124 @@
       }
     };
 
-    // GIF picker using klipy (public Giphy-compatible API)
-    async function openGifPicker() {
-      const query = prompt("Search GIFs:");
-      if (!query) return;
+    // GIF picker using klipy (public Giphy-compatible API) - Discord-style panel
+    let gifSearchDebounce = null;
+    let currentGifQuery = "";
+    let gifModal = null;
 
-      sendBtn.disabled = true;
-      attachBtn.disabled = true;
-      textInput.placeholder = "Searching GIFs...";
+    attachGifBtn.onclick = (e) => {
+      e.stopPropagation();
+      attachMenu.classList.add("hidden");
+      openGifPanel();
+    };
 
-      try {
-        // klipy API - no key needed, CORS enabled
-        const res = await fetch(`https://api.klipy.com/v1/gifs/search?q=${encodeURIComponent(query)}&limit=20`);
-        const data = await res.json();
-
-        if (!data.data || data.data.length === 0) {
-          alert("No GIFs found");
-          return;
-        }
-
-        // Show modal with GIF results
-        showGifModal(data.data);
-      } catch (err) {
-        alert("GIF search failed: " + err.message);
-      } finally {
-        sendBtn.disabled = false;
-        attachBtn.disabled = false;
-        textInput.placeholder = "Type a message";
-      }
-    }
-
-    function showGifModal(gifs) {
-      // Remove existing modal
-      const existing = document.getElementById("gifModal");
+    async function openGifPanel(query = "") {
+      currentGifQuery = query;
+      
+      // Remove existing panel
+      const existing = document.getElementById("gifPanel");
       if (existing) existing.remove();
 
-      const modal = document.createElement("div");
-      modal.id = "gifModal";
-      modal.className = "modal";
-      modal.innerHTML = `
-        <div class="modal-content" style="max-width: 400px; max-height: 70vh;">
-          <div class="modal-header">
-            <strong>Search Results</strong>
-            <span class="close-modal" onclick="closeGifModal()">×</span>
+      gifModal = document.createElement("div");
+      gifModal.id = "gifPanel";
+      gifModal.className = "modal";
+      gifModal.innerHTML = `
+        <div class="modal-content" style="width: 100%; max-width: 360px; max-height: 80vh; display: flex; flex-direction: column; padding: 0;">
+          <div style="padding: 12px; border-bottom: 1px solid #334155; display: flex; gap: 8px; align-items: center;">
+            <div style="flex: 1; position: relative;">
+              <input type="text" id="gifSearchInput" placeholder="Search GIFs..." 
+                style="width: 100%; padding: 10px 12px 10px 36px; border-radius: 20px; border: 1px solid #334155; background: #0f172a; color: #e5e7eb; font-size: 14px; outline: none;"
+                value="${query}" autocomplete="off" />
+              <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); opacity: 0.5; pointer-events: none;">🔍</span>
+            </div>
+            <button id="gifCloseBtn" style="padding: 8px; background: none; border: none; color: #94a3b8; cursor: pointer; border-radius: 8px; font-size: 18px;">×</button>
           </div>
-          <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; max-height: 50vh; overflow-y: auto;">
-            ${gifs.map(gif => `
-              <img src="${gif.images?.downsized?.url || gif.images?.fixed_width?.url || gif.url}" 
-                   alt="${gif.title || 'GIF'}" 
-                   style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; cursor: pointer; border: 2px solid transparent;"
-                   onclick="selectGif('${gif.images?.downsized?.url || gif.images?.fixed_width?.url || gif.url}')"
-                   onmouseover="this.style.borderColor='#2563eb'"
-                   onmouseout="this.style.borderColor='transparent'">
-            `).join('')}
+          <div id="gifGrid" style="flex: 1; overflow-y: auto; padding: 12px; display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px;">
+            <div style="grid-column: 1 / -1; text-align: center; opacity: 0.5; padding: 20px;">Loading...</div>
+          </div>
+          <div style="padding: 8px 12px; border-top: 1px solid #334155; font-size: 11px; opacity: 0.5; text-align: center;">
+            Powered by GIPHY via klipy
           </div>
         </div>
       `;
-      document.body.appendChild(modal);
-      
-      // Close on backdrop click
-      modal.onclick = (e) => { if (e.target === modal) closeGifModal(); };
+      document.body.appendChild(gifModal);
+
+      const searchInput = document.getElementById("gifSearchInput");
+      const gifGrid = document.getElementById("gifGrid");
+      const closeBtn = document.getElementById("gifCloseBtn");
+
+      // Close handlers
+      const closePanel = () => {
+        if (gifModal) gifModal.remove();
+        gifModal = null;
+      };
+      closeBtn.onclick = closePanel;
+      gifModal.onclick = (e) => { if (e.target === gifModal) closePanel(); };
+
+      // Search with debounce
+      searchInput.oninput = (e) => {
+        clearTimeout(gifSearchDebounce);
+        gifSearchDebounce = setTimeout(() => {
+          currentGifQuery = e.target.value.trim();
+          loadGifs(currentGifQuery, gifGrid);
+        }, 250);
+      };
+
+      searchInput.onkeydown = (e) => {
+        if (e.key === "Enter") {
+          clearTimeout(gifSearchDebounce);
+          currentGifQuery = searchInput.value.trim();
+          loadGifs(currentGifQuery, gifGrid);
+        }
+      };
+
+      // Focus search input
+      setTimeout(() => searchInput.focus(), 50);
+
+      // Initial load
+      loadGifs(query, gifGrid);
     }
 
-    window.closeGifModal = () => {
-      const modal = document.getElementById("gifModal");
-      if (modal) modal.remove();
-    };
+    async function loadGifs(query, gridEl) {
+      gridEl.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; opacity: 0.5; padding: 20px;">Loading...</div>';
+      
+      try {
+        const url = query 
+          ? `https://api.klipy.com/v1/gifs/search?q=${encodeURIComponent(query)}&limit=30`
+          : `https://api.klipy.com/v1/gifs/trending?limit=30`;
+        
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (!data.data || data.data.length === 0) {
+          gridEl.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; opacity: 0.5; padding: 20px;">No GIFs found</div>';
+          return;
+        }
+
+        gridEl.innerHTML = data.data.map(gif => {
+          const gifUrl = gif.images?.downsized?.url || gif.images?.fixed_width?.url || gif.images?.original?.url || gif.url;
+          const previewUrl = gif.images?.fixed_width_small?.url || gif.images?.preview_webp?.url || gif.images?.fixed_width?.url || gifUrl;
+          return `
+            <img src="${previewUrl}" 
+                 data-full="${gifUrl}"
+                 alt="${(gif.title || 'GIF').replace(/'/g, '&apos;')}" 
+                 style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; cursor: pointer; border: 2px solid transparent; transition: border 0.1s;"
+                 onclick="selectGif(this.dataset.full)"
+                 onmouseover="this.style.borderColor='#2563eb'"
+                 onmouseout="this.style.borderColor='transparent'"
+                 loading="lazy">
+          `;
+        }).join('');
+      } catch (err) {
+        gridEl.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #ef4444; padding: 20px;">Failed to load: ' + err.message + '</div>';
+      }
+    }
 
     window.selectGif = (url) => {
       textInput.value = url;
       textInput.focus();
-      closeGifModal();
+      if (gifModal) gifModal.remove();
+      gifModal = null;
     };
 
     chatForm.addEventListener("submit", async (e) => {
