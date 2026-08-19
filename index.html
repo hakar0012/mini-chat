@@ -784,7 +784,7 @@
 
     // GIF picker using Klipy API - Discord-style panel
     const KLIPY_API_KEY = "qonfBVMFL4S3UGx546UVIJ6g6mvWM51F7RYKePDE78JIVs9kGV5DIwRrgPftFuBr";
-    const KLIPY_BASE_URL = `https://api.klipy.com/api/v1/${KLIPY_API_KEY}/gifs`;
+    const KLIPY_BASE_URL = "https://api.klipy.com/v2";
     
     let gifSearchDebounce = null;
     let currentGifQuery = "";
@@ -868,14 +868,14 @@
       
       try {
         const url = query 
-          ? `${KLIPY_BASE_URL}/search?q=${encodeURIComponent(query)}&limit=30`
-          : `${KLIPY_BASE_URL}/trending?limit=30`;
+          ? `${KLIPY_BASE_URL}/search?q=${encodeURIComponent(query)}&limit=30&key=${KLIPY_API_KEY}`
+          : `${KLIPY_BASE_URL}/featured?limit=30&key=${KLIPY_API_KEY}`;
         
         const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
 
-        const results = data.results || data;
+        const results = data.results;
         
         if (!results || results.length === 0) {
           gridEl.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; opacity: 0.5; padding: 20px;">No GIFs found</div>';
@@ -883,8 +883,9 @@
         }
 
         gridEl.innerHTML = results.map(gif => {
-          const gifUrl = gif.media?.[0]?.url || gif.url || gif.src;
-          const previewUrl = gif.media?.[0]?.preview_url || gif.media?.[0]?.url || gif.preview_url || gif.thumbnail_url || gifUrl;
+          const media = gif.media_formats?.gif || gif.media_formats?.tinygif || gif.media_formats?.nanogif;
+          const gifUrl = media?.url || gif.url;
+          const previewUrl = gif.media_formats?.tinygif?.url || gif.media_formats?.nanogif?.url || media?.url || gifUrl;
           const description = gif.content_description || gif.title || 'GIF';
           return `
             <img src="${previewUrl}" 
