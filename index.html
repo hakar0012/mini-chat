@@ -818,7 +818,7 @@
             <div style="grid-column: 1 / -1; text-align: center; opacity: 0.5; padding: 20px;">Loading...</div>
           </div>
           <div style="padding: 8px 12px; border-top: 1px solid #334155; font-size: 11px; opacity: 0.5; text-align: center;">
-            Powered by GIPHY via klipy
+            Powered by Tenor
           </div>
         </div>
       `;
@@ -864,25 +864,28 @@
       gridEl.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; opacity: 0.5; padding: 20px;">Loading...</div>';
       
       try {
+        // Using Tenor API (more reliable, no key needed for basic usage)
         const url = query 
-          ? `https://api.klipy.com/v1/gifs/search?q=${encodeURIComponent(query)}&limit=30`
-          : `https://api.klipy.com/v1/gifs/trending?limit=30`;
+          ? `https://tenor.googleapis.com/v2/search?q=${encodeURIComponent(query)}&limit=30&media_filter=gif&key=AIZA_SY_DEMO_KEY`
+          : `https://tenor.googleapis.com/v2/featured?limit=30&media_filter=gif&key=AIZA_SY_DEMO_KEY`;
         
         const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
 
-        if (!data.data || data.data.length === 0) {
+        if (!data.results || data.results.length === 0) {
           gridEl.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; opacity: 0.5; padding: 20px;">No GIFs found</div>';
           return;
         }
 
-        gridEl.innerHTML = data.data.map(gif => {
-          const gifUrl = gif.images?.downsized?.url || gif.images?.fixed_width?.url || gif.images?.original?.url || gif.url;
-          const previewUrl = gif.images?.fixed_width_small?.url || gif.images?.preview_webp?.url || gif.images?.fixed_width?.url || gifUrl;
+        gridEl.innerHTML = data.results.map(gif => {
+          const media = gif.media_formats?.gif || gif.media_formats?.tinygif || gif.media_formats?.nanogif;
+          const gifUrl = media?.url || gif.url;
+          const previewUrl = gif.media_formats?.tinygif?.url || gif.media_formats?.nanogif?.url || media?.url || gifUrl;
           return `
             <img src="${previewUrl}" 
                  data-full="${gifUrl}"
-                 alt="${(gif.title || 'GIF').replace(/'/g, '&apos;')}" 
+                 alt="${(gif.content_description || 'GIF').replace(/'/g, '&apos;')}" 
                  style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; cursor: pointer; border: 2px solid transparent; transition: border 0.1s;"
                  onclick="selectGif(this.dataset.full)"
                  onmouseover="this.style.borderColor='#2563eb'"
