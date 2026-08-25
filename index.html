@@ -2,42 +2,47 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Mini Group Chat</title>
   <link rel="stylesheet" href="css/base.css" />
   <link rel="stylesheet" href="css/chat.css" />
 </head>
 <body class="chat-page">
-  <!-- Header Bar -->
-  <header></header>
+  <div class="chat-shell">
+    <!-- Header Bar -->
+    <header id="chatHeader"></header>
 
-  <!-- Messages Scroll Area -->
-  <main id="messages" aria-live="polite"></main>
+    <!-- Messages Scroll Area -->
+    <main id="messages" aria-live="polite"></main>
 
-  <!-- Typing Indicator -->
-  <div id="typingIndicator"></div>
+    <!-- Typing Indicator -->
+    <div id="typingIndicator"></div>
 
-  <!-- Reply Preview Bar -->
-  <div id="replyBar">
-    Replying to <strong id="replyName"></strong>
-    <span class="close" onclick="cancelReply()">×</span>
-  </div>
-  
-  <!-- Message Composer Form -->
-  <form id="chatForm" class="hidden">
-    <input type="file" id="imageInput" accept="image/*" style="display: none;" />
-    
-    <div style="position: relative;">
-      <button type="button" id="attachBtn" class="btn-attach" title="Attach media">+</button>
-      <div id="attachMenu" class="attach-menu hidden">
-        <button type="button" id="attachImageBtn" class="attach-menu-item">🖼️ Image</button>
-        <button type="button" id="attachGifBtn" class="attach-menu-item">🎞️ GIF</button>
+    <!-- Composer Section with Docked Reply Bar -->
+    <div class="composer-wrapper">
+      <!-- Reply Preview Bar -->
+      <div id="replyBar">
+        <div class="reply-bar-info" id="replyName"></div>
+        <span class="reply-bar-close" onclick="cancelReply()" title="Cancel reply (Esc)">×</span>
       </div>
-    </div>
+      
+      <!-- Message Composer Form -->
+      <form id="chatForm" class="hidden">
+        <input type="file" id="imageInput" accept="image/*" style="display: none;" />
+        
+        <div style="position: relative;">
+          <button type="button" id="attachBtn" class="btn-attach" title="Attach image or GIF">+</button>
+          <div id="attachMenu" class="attach-menu hidden">
+            <button type="button" id="attachImageBtn" class="attach-menu-item">🖼️ Upload Image</button>
+            <button type="button" id="attachGifBtn" class="attach-menu-item">🎞️ Search GIFs</button>
+          </div>
+        </div>
 
-    <input type="text" id="textInput" placeholder="Type a message" maxlength="1000" autocomplete="off" />
-    <button id="sendBtn" type="submit" class="btn-primary">Send</button>
-  </form>
+        <input type="text" id="textInput" placeholder="Type a message..." maxlength="1000" autocomplete="off" />
+        <button id="sendBtn" type="submit">Send</button>
+      </form>
+    </div>
+  </div>
 
   <!-- Online Users Modal -->
   <div id="onlineModal" class="modal hidden">
@@ -54,14 +59,14 @@
   <div id="roomPanelOverlay" class="room-panel-overlay" onclick="closeRoomPanel()"></div>
   <div id="roomPanel" class="room-panel">
     <div class="room-panel-header">
-      <h3>Rooms</h3>
-      <button class="room-panel-close" onclick="closeRoomPanel()">×</button>
+      <h3>💬 Chat Rooms</h3>
+      <button class="close-modal" onclick="closeRoomPanel()">×</button>
     </div>
     <div class="room-panel-content">
       <input type="text" id="newRoomInput" class="room-panel-input" placeholder="New room name..." onkeydown="if(event.key==='Enter') joinNewRoom()" />
-      <button class="room-panel-btn" onclick="joinNewRoom()">Join / Create</button>
+      <button class="room-panel-btn" onclick="joinNewRoom()">Join / Create Room</button>
       <div class="room-panel-section">
-        <div class="room-panel-section-label">Recent Rooms</div>
+        <div class="room-panel-section-label" style="font-size: 11px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 8px; font-weight: 600;">Recent Rooms</div>
         <div id="roomPanelList"></div>
       </div>
     </div>

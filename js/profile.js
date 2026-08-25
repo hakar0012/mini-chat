@@ -2,7 +2,8 @@
 // PROFILE EDITING & PREFERENCES LOGIC
 // =======================================================
 (function() {
-  const PRESETS = ['🐱', '🐶', '🦊', '🐼', '🐸', '👻', '🤖', '👽', '🦄', '🐙'];
+  const PRESETS = ['🐱', '🐶', '🦊', '🐼', '🐸', '👻', '🤖', '👽', '🦄', '🐙', '🦁', '🐯', '🐨', '🐲', '🚀', '⚡'];
+  const COLOR_PRESETS = ['#2563eb', '#7c3aed', '#db2777', '#dc2626', '#d97706', '#059669', '#0891b2', '#4f46e5', '#475569'];
   
   const nameInput = document.getElementById('nameInput');
   const nameError = document.getElementById('nameError');
@@ -12,12 +13,27 @@
   const initialsOptions = document.getElementById('initialsOptions');
   const presetOptions = document.getElementById('presetOptions');
   const presetList = document.getElementById('presetList');
+  const colorPresetsList = document.getElementById('colorPresetsList');
   const saveBtn = document.getElementById('saveBtn');
   const saveError = document.getElementById('saveError');
   const logoutBtn = document.getElementById('logoutBtn');
 
   let currentProfile = null;
   let selectedPreset = '🐱';
+
+  // Render Color Swatches
+  COLOR_PRESETS.forEach(color => {
+    const swatch = document.createElement('div');
+    swatch.className = 'color-swatch' + (colorInput.value.toLowerCase() === color.toLowerCase() ? ' selected' : '');
+    swatch.style.background = color;
+    swatch.onclick = () => {
+      colorInput.value = color;
+      document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+      swatch.classList.add('selected');
+      updatePreview();
+    };
+    colorPresetsList.appendChild(swatch);
+  });
 
   // Render Preset Emojis
   PRESETS.forEach(p => {
@@ -42,6 +58,7 @@
     if (type === 'initials') {
       avatarPreview.textContent = name.charAt(0).toUpperCase() || '?';
       avatarPreview.style.background = color;
+      avatarPreview.style.color = '#ffffff';
     } else {
       avatarPreview.textContent = selectedPreset;
       avatarPreview.style.background = '#1e293b';
@@ -49,7 +66,10 @@
   }
 
   nameInput.addEventListener('input', updatePreview);
-  colorInput.addEventListener('input', updatePreview);
+  colorInput.addEventListener('input', () => {
+    document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+    updatePreview();
+  });
   
   Array.from(avatarTypeRadios).forEach(r => r.addEventListener('change', () => {
     if (r.value === 'initials') {
@@ -92,6 +112,9 @@
         });
       } else {
         colorInput.value = currentProfile.avatarValue || '#2563eb';
+        document.querySelectorAll('.color-swatch').forEach(s => {
+          s.classList.toggle('selected', s.style.background === colorInput.value);
+        });
       }
       updatePreview();
     } else {
@@ -137,7 +160,7 @@
         return;
       }
 
-      // If user changed name, release previous username
+      // Release previous username if changed
       if (currentProfile && currentProfile.name) {
         const oldLowerName = currentProfile.name.toLowerCase();
         if (oldLowerName !== lowerName) {

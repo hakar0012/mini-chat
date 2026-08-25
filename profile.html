@@ -20,18 +20,20 @@
 
     <div class="field">
       <label>Avatar Style</label>
-      <div style="display: flex; gap: 14px; align-items: center; margin-bottom: 12px;">
-        <label style="margin: 0; display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-main);">
-          <input type="radio" name="avatarType" value="initials" checked /> Initials
+      <div style="display: flex; gap: 16px; align-items: center; margin-bottom: 14px;">
+        <label style="margin: 0; display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-main); font-size: 14px;">
+          <input type="radio" name="avatarType" value="initials" checked style="accent-color: var(--primary);" /> Initials
         </label>
-        <label style="margin: 0; display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-main);">
-          <input type="radio" name="avatarType" value="preset" /> Emoji
+        <label style="margin: 0; display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-main); font-size: 14px;">
+          <input type="radio" name="avatarType" value="preset" style="accent-color: var(--primary);" /> Emoji
         </label>
       </div>
 
       <div id="initialsOptions">
-        <label for="colorInput">Background Color</label>
-        <input type="color" id="colorInput" value="#2563eb" style="height: 44px; padding: 4px; cursor: pointer;" />
+        <label>Palette Presets</label>
+        <div class="color-presets" id="colorPresetsList"></div>
+        <label for="colorInput" style="margin-top: 8px;">Custom Color</label>
+        <input type="color" id="colorInput" value="#2563eb" style="height: 40px; padding: 3px; cursor: pointer;" />
       </div>
 
       <div id="presetOptions" style="display: none;">
@@ -44,7 +46,7 @@
     <div class="field-error" id="saveError" style="text-align: center; margin-top: 10px;"></div>
 
     <div class="auth-footer">
-      <a href="index.html">Back to Chat</a>
+      <a href="index.html">← Back to Chat</a>
       <span style="opacity: 0.3; margin: 0 10px;">|</span>
       <a href="#" id="logoutBtn" style="color: var(--danger);">Logout</a>
     </div>

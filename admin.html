@@ -14,9 +14,31 @@
       <button class="btn-logout" onclick="logout()">Logout</button>
     </div>
 
+    <!-- Quick Stats -->
+    <div class="admin-stats">
+      <div class="stat-card">
+        <span class="stat-label">Total Users</span>
+        <span class="stat-value" id="statUsers">0</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Banned Users</span>
+        <span class="stat-value" id="statBanned" style="color: var(--danger);">0</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Active Rooms</span>
+        <span class="stat-value" id="statRooms" style="color: var(--accent);">0</span>
+      </div>
+    </div>
+
     <div class="admin-tabs">
       <div class="admin-tab active" onclick="switchTab('users')">👥 Users</div>
       <div class="admin-tab" onclick="switchTab('rooms')">💬 Rooms</div>
+    </div>
+
+    <!-- Search Filter -->
+    <div class="search-bar">
+      <span class="search-bar-icon">🔍</span>
+      <input type="text" id="adminSearchInput" placeholder="Filter by name or ID..." autocomplete="off" />
     </div>
 
     <div id="usersPanel" class="admin-panel active">

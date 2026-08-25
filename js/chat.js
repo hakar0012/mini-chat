@@ -1,12 +1,12 @@
 // =======================================================
-// MINI GROUP CHAT CORE APPLICATION LOGIC
+// MINI GROUP CHAT - MODERN OVERHAUL APPLICATION LOGIC
 // =======================================================
 (function() {
   // --- Third Party API Keys ---
   const IMGBB_API_KEY = "94b9d72bc5e7b37b1da9d1f1732c2142";
   const KLIPY_API_KEY = "qonfBVMFL4S3UGx546UVIJ6g6mvWM51F7RYKePDE78JIVs9kGV5DIwRrgPftFuBr";
   const KLIPY_BASE_URL = "https://api.klipy.com/v2";
-  const EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
+  const EMOJIS = ['👍', '❤️', '😂', '🔥', '😮', '😢'];
 
   // --- Room Setup ---
   const params = new URLSearchParams(location.search);
@@ -18,7 +18,7 @@
   const chatForm = document.getElementById("chatForm");
   const textInput = document.getElementById("textInput");
   const sendBtn = document.getElementById("sendBtn");
-  const header = document.querySelector("header");
+  const header = document.getElementById("chatHeader");
   const replyBar = document.getElementById("replyBar");
   const replyName = document.getElementById("replyName");
   const imageInput = document.getElementById("imageInput");
@@ -28,7 +28,7 @@
   const attachGifBtn = document.getElementById("attachGifBtn");
   const typingIndicator = document.getElementById("typingIndicator");
 
-  // --- Application State ---
+  // --- State Variables ---
   let myName = "", myUid = "", myAvatarType = "", myAvatarValue = "";
   let messagesCache = {};
   let replyingTo = null;
@@ -36,17 +36,15 @@
   let onlineUsers = {};
   let userProfilesCache = {};
   let oldestTs = Infinity;
-  let newestTs = 0;
   let isLoadingOlder = false;
   let allOlderLoaded = false;
-  let newMsgListenerAttached = false;
   let typingTimer = null;
   let gifSearchDebounce = null;
   let currentGifQuery = "";
   let gifModal = null;
 
   // =======================================================
-  // ROOM SWITCHER LOGIC
+  // ROOM SWITCHER DRAWER
   // =======================================================
   function getRooms() {
     return JSON.parse(localStorage.getItem('chat_rooms') || '["global","general"]');
@@ -56,7 +54,7 @@
     let rooms = getRooms();
     if (!rooms.includes(name)) {
       rooms.unshift(name);
-      localStorage.setItem('chat_rooms', JSON.stringify(rooms.slice(0, 10)));
+      localStorage.setItem('chat_rooms', JSON.stringify(rooms.slice(0, 15)));
     }
   }
   saveRoom(room);
@@ -70,8 +68,10 @@
   };
 
   window.closeRoomPanel = function() {
-    document.getElementById('roomPanel').classList.remove('open');
-    document.getElementById('roomPanelOverlay').classList.remove('open');
+    const panel = document.getElementById('roomPanel');
+    const overlay = document.getElementById('roomPanelOverlay');
+    if (panel) panel.classList.remove('open');
+    if (overlay) overlay.classList.remove('open');
   };
 
   window.joinNewRoom = function() {
@@ -80,7 +80,7 @@
     if (name) {
       saveRoom(name);
       input.value = '';
-      renderRoomPanel();
+      window.location.search = '?room=' + encodeURIComponent(name);
     }
   };
 
@@ -91,7 +91,7 @@
     getRooms().forEach(r => {
       const div = document.createElement('div');
       div.className = 'room-panel-item' + (r === room ? ' active' : '');
-      div.innerHTML = `<span class="room-panel-item-name"># ${escapeHtml(r)}</span>`;
+      div.innerHTML = `<span style="font-weight:500;"># ${escapeHtml(r)}</span>`;
       if (r === room) div.innerHTML += '<span class="room-panel-item-indicator"></span>';
       div.onclick = () => {
         if (r !== room) {
@@ -105,12 +105,12 @@
   }
 
   // =======================================================
-  // ONLINE USERS & PRESENCE
+  // ONLINE PRESENCE & AVATARS
   // =======================================================
   function updateOnlineUI() {
     const count = Object.keys(onlineUsers).length;
-    const countEl = document.getElementById('onlineCount');
-    if (countEl) countEl.textContent = `🟢 ${count} online`;
+    const countEl = document.getElementById('onlineCountText');
+    if (countEl) countEl.textContent = `${count} online`;
   }
 
   window.toggleOnlineModal = function() {
@@ -126,16 +126,18 @@
     listEl.innerHTML = "";
     const uids = Object.keys(onlineUsers);
     if (uids.length === 0) {
-      listEl.innerHTML = "<p style='opacity:0.6; margin:0;'>No one is online.</p>";
+      listEl.innerHTML = "<p style='opacity:0.6; text-align:center; padding:10px;'>No one is online.</p>";
       return;
     }
     uids.forEach(uid => {
       const profile = userProfilesCache[uid] || { name: "Unknown", avatarType: 'initials', avatarValue: '#334155' };
       const item = document.createElement("div");
       item.className = "online-item";
+      item.style.cssText = "display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border-subtle);";
       item.appendChild(createAvatarEl(profile.avatarType, profile.avatarValue, profile.name, uid));
       const nameSpan = document.createElement("span");
       nameSpan.textContent = profile.name;
+      nameSpan.style.cssText = "font-size:14px; font-weight:500;";
       item.appendChild(nameSpan);
       listEl.appendChild(item);
     });
@@ -153,13 +155,14 @@
 
   function createAvatarEl(type, value, name, uid) {
     const el = document.createElement("div");
-    el.style.cssText = "width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:14px;flex-shrink:0;";
+    el.style.cssText = "width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;user-select:none;box-shadow:0 2px 5px rgba(0,0,0,0.2);";
     if (type === 'preset') {
       el.textContent = value || '👤';
       el.style.background = '#1e293b';
     } else {
       el.textContent = (name || '?').charAt(0).toUpperCase();
       el.style.background = value || '#2563eb';
+      el.style.color = '#ffffff';
     }
     return el;
   }
@@ -186,12 +189,25 @@
       return match;
     });
 
-    // Markdown: `code`, *bold*, _italic_
+    // Markdown: `code`, *bold*, _italic_, ~~strike~~
     safeText = safeText.replace(/`([^`]+)`/g, '<code>$1</code>');
     safeText = safeText.replace(/\*([^*]+)\*/g, '<strong>$1</strong>');
     safeText = safeText.replace(/_([^_]+)_/g, '<em>$1</em>');
+    safeText = safeText.replace(/~~([^~]+)~~/g, '<del>$1</del>');
 
     return safeText;
+  }
+
+  // Image Lightbox Viewer
+  function openLightbox(src) {
+    const existing = document.querySelector('.lightbox-modal');
+    if (existing) existing.remove();
+
+    const box = document.createElement("div");
+    box.className = "lightbox-modal";
+    box.innerHTML = `<img src="${escapeHtml(src)}" class="lightbox-img" alt="Enlarged media" />`;
+    box.onclick = () => box.remove();
+    document.body.appendChild(box);
   }
 
   function parseMessageText(text) {
@@ -211,16 +227,14 @@
           container.style.marginTop = "6px";
           const img = document.createElement("img");
           img.src = part;
-          img.style.cssText = "max-width:100%;max-height:300px;border-radius:8px;display:block;";
+          img.style.cssText = "max-width:100%;max-height:280px;border-radius:10px;display:block;cursor:zoom-in;box-shadow:0 3px 10px rgba(0,0,0,0.3);";
           img.loading = "lazy";
+          img.onclick = () => openLightbox(img.src);
           img.onerror = () => {
             container.innerHTML = "";
             const a = document.createElement("a");
-            a.href = part;
-            a.target = "_blank";
-            a.rel = "noopener noreferrer";
-            a.textContent = part;
-            a.style.cssText = "color:#60a5fa;word-break:break-all;";
+            a.href = part; a.target = "_blank"; a.rel = "noopener noreferrer";
+            a.textContent = part; a.style.cssText = "color:#60a5fa;word-break:break-all;text-decoration:underline;";
             container.appendChild(a);
           };
           container.appendChild(img);
@@ -231,26 +245,21 @@
           const video = document.createElement("video");
           video.src = part;
           video.controls = true;
-          video.style.cssText = "max-width:100%;max-height:300px;border-radius:8px;";
+          video.style.cssText = "max-width:100%;max-height:280px;border-radius:10px;box-shadow:0 3px 10px rgba(0,0,0,0.3);";
           video.onerror = () => {
             container.innerHTML = "";
             const a = document.createElement("a");
-            a.href = part;
-            a.target = "_blank";
-            a.rel = "noopener noreferrer";
-            a.textContent = part;
-            a.style.cssText = "color:#60a5fa;word-break:break-all;";
+            a.href = part; a.target = "_blank"; a.rel = "noopener noreferrer";
+            a.textContent = part; a.style.cssText = "color:#60a5fa;word-break:break-all;text-decoration:underline;";
             container.appendChild(a);
           };
           container.appendChild(video);
           fragment.appendChild(container);
         } else {
           const a = document.createElement("a");
-          a.href = part;
-          a.target = "_blank";
-          a.rel = "noopener noreferrer";
+          a.href = part; a.target = "_blank"; a.rel = "noopener noreferrer";
           a.textContent = part;
-          a.style.cssText = "color:#60a5fa;text-decoration:underline;word-break:break-all;";
+          a.style.cssText = "color:#93c5fd;text-decoration:underline;word-break:break-all;";
           fragment.appendChild(a);
         }
       } else if (part.length > 0) {
@@ -294,29 +303,36 @@
   }
 
   // =======================================================
-  // MESSAGE RENDERING & LIST
+  // MESSAGE RENDERING & FEED
   // =======================================================
   function renderMessage(data, msgId) {
     const row = document.createElement("div");
-    row.className = "msg-row" + (data.uid === myUid ? " mine" : "");
+    const isMine = data.uid === myUid;
+    row.className = "msg-row" + (isMine ? " mine" : "");
     row.id = "msg-" + msgId;
 
     const avatar = createAvatarEl(data.avatarType, data.avatarValue, data.name, data.uid);
 
     const msgBox = document.createElement("div");
-    msgBox.className = "msg" + (data.uid === myUid ? " me" : "");
+    msgBox.className = "msg";
 
-    // Reply preview
+    // Overhauled Reply Quote inside Message
     if (data.replyToId) {
       const rep = document.createElement("div");
       rep.className = "reply-preview";
-      rep.innerHTML = `<strong>${escapeHtml(data.replyToName || "anon")}</strong><br>${escapeHtml(data.replyToText || "")}`;
-      rep.onclick = () => {
-        const el = document.getElementById('msg-' + data.replyToId);
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          el.classList.add('highlight');
-          setTimeout(() => el.classList.remove('highlight'), 1500);
+      rep.innerHTML = `
+        <div class="reply-preview-name">↩ ${escapeHtml(data.replyToName || "anon")}</div>
+        <div class="reply-preview-text">${escapeHtml(data.replyToText || "")}</div>
+      `;
+      rep.onclick = (e) => {
+        e.stopPropagation();
+        const targetEl = document.getElementById('msg-' + data.replyToId);
+        if (targetEl) {
+          targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          targetEl.classList.remove('highlight');
+          void targetEl.offsetWidth; // trigger reflow
+          targetEl.classList.add('highlight');
+          setTimeout(() => targetEl.classList.remove('highlight'), 2000);
         }
       };
       msgBox.appendChild(rep);
@@ -336,52 +352,80 @@
     reactionsContainer.className = "reactions-container";
     msgBox.appendChild(reactionsContainer);
 
-    msgBox.ondblclick = () => showReactionPicker(msgId, msgBox);
-    let pressTimer;
-    msgBox.ontouchstart = () => { pressTimer = setTimeout(() => showReactionPicker(msgId, msgBox), 500); };
-    msgBox.ontouchend = () => clearTimeout(pressTimer);
-    msgBox.ontouchmove = () => clearTimeout(pressTimer);
+    // Floating Quick-Action Toolbar on Message Hover
+    const toolbar = document.createElement("div");
+    toolbar.className = "msg-toolbar";
 
-    // Actions Menu (⋮)
-    const isMine = data.uid === myUid;
-    const actions = document.createElement("div");
-    actions.className = "msg-actions";
-    actions.innerHTML = "⋮";
-
-    const menu = document.createElement("div");
-    menu.className = "msg-menu";
-
+    // Reply Button
     const replyBtn = document.createElement("button");
-    replyBtn.textContent = "Reply";
+    replyBtn.className = "msg-toolbar-btn";
+    replyBtn.title = "Reply";
+    replyBtn.innerHTML = "↩";
     replyBtn.onclick = (e) => { e.stopPropagation(); startReply(msgId); };
-    menu.appendChild(replyBtn);
+    toolbar.appendChild(replyBtn);
+
+    // React Button
+    const reactBtn = document.createElement("button");
+    reactBtn.className = "msg-toolbar-btn";
+    reactBtn.title = "Add Reaction";
+    reactBtn.innerHTML = "😊";
+    reactBtn.onclick = (e) => { e.stopPropagation(); showReactionPicker(msgId, msgBox); };
+    toolbar.appendChild(reactBtn);
 
     if (isMine) {
       const editBtn = document.createElement("button");
-      editBtn.textContent = "Edit";
+      editBtn.className = "msg-toolbar-btn";
+      editBtn.title = "Edit Message";
+      editBtn.innerHTML = "✏️";
       editBtn.onclick = (e) => { e.stopPropagation(); startEdit(msgId); };
-      menu.appendChild(editBtn);
+      toolbar.appendChild(editBtn);
 
       const deleteBtn = document.createElement("button");
-      deleteBtn.textContent = "Delete";
+      deleteBtn.className = "msg-toolbar-btn";
+      deleteBtn.title = "Delete Message";
+      deleteBtn.innerHTML = "🗑️";
       deleteBtn.onclick = (e) => { e.stopPropagation(); deleteMsg(msgId); };
-      menu.appendChild(deleteBtn);
+      toolbar.appendChild(deleteBtn);
     }
-    actions.appendChild(menu);
-    actions.onclick = (e) => {
-      e.stopPropagation();
-      document.querySelectorAll('.msg-menu.active').forEach(m => m.classList.remove('active'));
-      menu.classList.toggle('active');
-    };
 
-    msgBox.appendChild(actions);
     row.appendChild(avatar);
     row.appendChild(msgBox);
+    row.appendChild(toolbar);
+
+    // Mobile tap support for toolbar
+    row.addEventListener('click', (e) => {
+      document.querySelectorAll('.msg-row.touch-active').forEach(r => {
+        if (r !== row) r.classList.remove('touch-active');
+      });
+      row.classList.toggle('touch-active');
+    });
 
     return row;
   }
 
+  function checkEmptyState() {
+    const existingHero = document.querySelector('.empty-hero');
+    const msgCount = Object.keys(messagesCache).length;
+    if (msgCount === 0) {
+      if (!existingHero) {
+        const hero = document.createElement("div");
+        hero.className = "empty-hero";
+        hero.innerHTML = `
+          <div class="empty-hero-icon">💬</div>
+          <h3>Welcome to #${escapeHtml(room)}!</h3>
+          <p>No messages yet. Say hello and start the conversation 👋</p>
+        `;
+        messagesEl.appendChild(hero);
+      }
+    } else {
+      if (existingHero) existingHero.remove();
+    }
+  }
+
   function addMessage(data, msgId, prepend = false) {
+    const existingHero = document.querySelector('.empty-hero');
+    if (existingHero) existingHero.remove();
+
     cacheProfile(data);
     messagesCache[msgId] = data;
     const row = renderMessage(data, msgId);
@@ -389,7 +433,7 @@
     if (prepend) {
       messagesEl.insertBefore(row, messagesEl.firstChild);
     } else {
-      const nearBottom = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 80;
+      const nearBottom = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 100;
       messagesEl.appendChild(row);
       const isMine = data.uid === myUid;
       if (nearBottom || isMine) messagesEl.scrollTop = messagesEl.scrollHeight;
@@ -443,10 +487,9 @@
   window.startReply = function(id) {
     const msg = messagesCache[id];
     if (!msg) return;
-    replyingTo = { id: id, name: msg.name, text: (msg.text || "").substring(0, 40) };
+    replyingTo = { id: id, name: msg.name, text: (msg.text || "").substring(0, 50) };
     replyBar.classList.add("active");
-    replyName.textContent = msg.name;
-    document.querySelectorAll('.msg-menu.active').forEach(m => m.classList.remove('active'));
+    replyName.innerHTML = `<span>↩ Replying to <strong>@${escapeHtml(msg.name || "anon")}</strong>: "${escapeHtml(replyingTo.text)}"</span>`;
     textInput.focus();
   };
 
@@ -462,29 +505,34 @@
     textInput.value = msg.text;
     sendBtn.textContent = "Save";
     cancelReply();
-    document.querySelectorAll('.msg-menu.active').forEach(m => m.classList.remove('active'));
     textInput.focus();
   };
 
   window.deleteMsg = async function(id) {
-    document.querySelectorAll('.msg-menu.active').forEach(m => m.classList.remove('active'));
     if (!confirm("Delete this message?")) return;
     try {
       await messagesRef.child(id).remove();
       const el = document.getElementById("msg-" + id);
       if (el) el.remove();
       delete messagesCache[id];
+      checkEmptyState();
     } catch (err) {
       alert("Delete failed: " + err.message);
     }
   };
 
-  document.body.addEventListener('click', () => {
-    document.querySelectorAll('.msg-menu.active').forEach(m => m.classList.remove('active'));
+  // Keyboard shortcut: Escape to cancel reply or modals
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      cancelReply();
+      if (gifModal) { gifModal.remove(); gifModal = null; }
+      const lightbox = document.querySelector('.lightbox-modal');
+      if (lightbox) lightbox.remove();
+    }
   });
 
   // =======================================================
-  // TYPING INDICATOR
+  // ANIMATED 3-DOT TYPING INDICATOR
   // =======================================================
   const typingRef = () => db.ref(`rooms/${room}/typing/${myUid}`);
 
@@ -516,7 +564,7 @@
     if (!typingIndicator) return;
     
     if (uids.length === 0) {
-      typingIndicator.textContent = "";
+      typingIndicator.innerHTML = "";
       return;
     }
 
@@ -529,9 +577,19 @@
       names.push(userProfilesCache[uid]?.name || 'Someone');
     }
     
-    if (names.length === 1) typingIndicator.textContent = `${names[0]} is typing...`;
-    else if (names.length === 2) typingIndicator.textContent = `${names[0]} and ${names[1]} are typing...`;
-    else typingIndicator.textContent = `${names[0]} and ${names.length - 1} others are typing...`;
+    let text = "";
+    if (names.length === 1) text = `${names[0]} is typing`;
+    else if (names.length === 2) text = `${names[0]} and ${names[1]} are typing`;
+    else text = `${names[0]} and ${names.length - 1} others are typing`;
+
+    typingIndicator.innerHTML = `
+      <span>${escapeHtml(text)}</span>
+      <span class="typing-dots">
+        <span class="typing-dot"></span>
+        <span class="typing-dot"></span>
+        <span class="typing-dot"></span>
+      </span>
+    `;
   });
 
   // =======================================================
@@ -567,7 +625,7 @@
     sendBtn.disabled = true;
     attachBtn.disabled = true;
     attachBtn.textContent = "⏳";
-    textInput.placeholder = "Uploading...";
+    textInput.placeholder = "Uploading image...";
 
     try {
       const formData = new FormData();
@@ -589,12 +647,12 @@
       sendBtn.disabled = false;
       attachBtn.disabled = false;
       attachBtn.textContent = "+";
-      textInput.placeholder = "Type a message";
+      textInput.placeholder = "Type a message...";
       imageInput.value = "";
     }
   };
 
-  // GIF Picker
+  // GIF Picker Modal
   attachGifBtn.onclick = (e) => {
     e.stopPropagation();
     attachMenu.classList.add("hidden");
@@ -610,20 +668,20 @@
     gifModal.id = "gifPanel";
     gifModal.className = "modal";
     gifModal.innerHTML = `
-      <div class="modal-content" style="padding:0;">
-        <div style="padding: 12px; border-bottom: 1px solid var(--border-color); display: flex; gap: 8px; align-items: center;">
+      <div class="modal-content" style="padding:0; max-width:420px;">
+        <div style="padding: 14px; border-bottom: 1px solid var(--border-subtle); display: flex; gap: 8px; align-items: center;">
           <div style="flex: 1; position: relative;">
             <input type="text" id="gifSearchInput" placeholder="Search GIFs..." 
-              style="width: 100%; padding: 10px 12px 10px 36px; border-radius: 20px; font-size: 14px;"
+              style="width: 100%; padding: 10px 14px 10px 36px; border-radius: 20px; font-size: 14px;"
               value="${escapeHtml(query)}" autocomplete="off" />
             <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); opacity: 0.5; pointer-events: none;">🔍</span>
           </div>
-          <button id="gifCloseBtn" style="padding: 8px; background: none; border: none; color: var(--text-muted); cursor: pointer; border-radius: 8px; font-size: 18px;">×</button>
+          <button id="gifCloseBtn" class="close-modal">×</button>
         </div>
-        <div id="gifGrid" style="flex: 1; overflow-y: auto; padding: 12px; display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; max-height: 55vh;">
-          <div style="grid-column: 1 / -1; text-align: center; opacity: 0.5; padding: 20px;">Loading...</div>
+        <div id="gifGrid" style="flex: 1; overflow-y: auto; padding: 12px; display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; max-height: 55vh;">
+          <div style="grid-column: 1 / -1; text-align: center; opacity: 0.5; padding: 20px;">Loading GIFs...</div>
         </div>
-        <div style="padding: 8px 12px; border-top: 1px solid var(--border-color); font-size: 11px; opacity: 0.5; text-align: center;">
+        <div style="padding: 8px 14px; border-top: 1px solid var(--border-subtle); font-size: 11px; color: var(--text-dim); text-align: center;">
           Powered by Klipy
         </div>
       </div>
@@ -662,7 +720,7 @@
   }
 
   async function loadGifs(query, gridEl) {
-    gridEl.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; opacity: 0.5; padding: 20px;">Loading...</div>';
+    gridEl.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; opacity: 0.5; padding: 20px;">Loading GIFs...</div>';
     
     try {
       const url = query 
@@ -688,10 +746,10 @@
           <img src="${escapeHtml(previewUrl)}" 
                data-full="${escapeHtml(gifUrl)}"
                alt="${escapeHtml(description)}" 
-               style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; cursor: pointer; border: 2px solid transparent; transition: border 0.1s;"
+               style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; cursor: pointer; border: 2px solid transparent; transition: transform 0.15s, border-color 0.15s;"
                onclick="selectGif(this.dataset.full)"
-               onmouseover="this.style.borderColor='var(--primary)'"
-               onmouseout="this.style.borderColor='transparent'"
+               onmouseover="this.style.borderColor='var(--primary)'; this.style.transform='scale(1.04)'"
+               onmouseout="this.style.borderColor='transparent'; this.style.transform='scale(1)'"
                loading="lazy">
         `;
       }).join('');
@@ -757,7 +815,7 @@
       textInput.value = "";
       textInput.focus();
     } catch (err) {
-      alert("Failed: " + err.message);
+      alert("Failed to send: " + err.message);
     } finally {
       sendBtn.disabled = false;
     }
@@ -802,7 +860,7 @@
       updateOnlineUI();
     });
 
-    // Reactions Listener (Targeted updates without full-DOM re-renders)
+    // Reactions Listener (Targeted updates)
     db.ref(`rooms/${room}/reactions`).on('value', (snap) => {
       const allReactions = snap.val() || {};
       
@@ -823,7 +881,8 @@
           const pill = document.createElement('div');
           pill.className = 'reaction-pill' + (isMine ? ' mine' : '');
           pill.innerHTML = `${emoji} <span>${count}</span>`;
-          pill.onclick = () => {
+          pill.onclick = (e) => {
+            e.stopPropagation();
             const ref = db.ref(`rooms/${room}/reactions/${msgId}/${emoji}/${myUid}`);
             if (isMine) ref.remove(); else ref.set(true);
           };
@@ -844,53 +903,61 @@
     myAvatarType = profile.avatarType;
     myAvatarValue = profile.avatarValue;
 
+    // Build Modern Header
     header.innerHTML = "";
-    const myAvatar = createAvatarEl(myAvatarType, myAvatarValue, myName, myUid);
-    myAvatar.style.cursor = "pointer";
-    myAvatar.title = "Edit Profile";
-    myAvatar.onclick = () => window.location.href = 'profile.html';
 
-    const nameDiv = document.createElement("strong");
-    nameDiv.textContent = myName;
+    // User Profile Chip
+    const userChip = document.createElement("div");
+    userChip.className = "header-user-chip";
+    userChip.title = "Edit your profile";
+    userChip.onclick = () => window.location.href = 'profile.html';
+    userChip.appendChild(createAvatarEl(myAvatarType, myAvatarValue, myName, myUid));
+    const nameStrong = document.createElement("strong");
+    nameStrong.textContent = myName;
+    userChip.appendChild(nameStrong);
 
-    const roomSpan = document.createElement("span");
-    roomSpan.id = "roomLabel";
-    roomSpan.textContent = `· #${room}`;
+    // Room Label Pill
+    const roomBadge = document.createElement("div");
+    roomBadge.className = "header-room-badge";
+    roomBadge.innerHTML = `<span class="hash">#</span> ${escapeHtml(room)}`;
 
-    const roomBtn = document.createElement("span");
-    roomBtn.className = "room-btn";
-    roomBtn.innerHTML = "🚪";
-    roomBtn.title = "Switch Rooms";
-    roomBtn.onclick = toggleRoomPanel;
+    // Room Switcher Button
+    const roomDrawerBtn = document.createElement("button");
+    roomDrawerBtn.className = "btn-room-drawer";
+    roomDrawerBtn.innerHTML = "<span>💬</span> Rooms";
+    roomDrawerBtn.onclick = toggleRoomPanel;
 
-    const onlineCountEl = document.createElement("span");
-    onlineCountEl.id = "onlineCount";
-    onlineCountEl.className = "online-badge";
-    onlineCountEl.textContent = "🟢 0 online";
-    onlineCountEl.onclick = toggleOnlineModal;
+    // Online Users Badge
+    const onlinePill = document.createElement("div");
+    onlinePill.className = "online-pill";
+    onlinePill.onclick = toggleOnlineModal;
+    onlinePill.innerHTML = `<span class="pulse-dot"></span> <span id="onlineCountText">0 online</span>`;
 
+    // Logout Button
     const logoutBtn = document.createElement("button");
     logoutBtn.className = "btn-header-logout";
     logoutBtn.textContent = "Logout";
     logoutBtn.onclick = () => auth.signOut().then(() => location.href = 'login.html');
 
-    header.appendChild(myAvatar);
-    header.appendChild(nameDiv);
-    header.appendChild(roomSpan);
-    header.appendChild(roomBtn);
-    header.appendChild(onlineCountEl);
+    header.appendChild(userChip);
+    header.appendChild(roomBadge);
+    header.appendChild(roomDrawerBtn);
+    header.appendChild(onlinePill);
     header.appendChild(logoutBtn);
     updateOnlineUI();
 
     chatForm.classList.remove("hidden");
     textInput.focus();
 
-    // Direct, reliable real-time message stream (initial 50 + all live updates)
+    // Check empty state initially
+    checkEmptyState();
+
+    // Direct, reliable real-time message stream
     messagesRef.orderByChild("ts").limitToLast(50).on("child_added", (snap) => {
       const val = snap.val();
       const key = snap.key;
       if (!val) return;
-      if (messagesCache[key]) return; // Deduplication guard
+      if (messagesCache[key]) return;
       if (val.ts && val.ts < oldestTs) oldestTs = val.ts;
       addMessage(val, key, false);
     });
@@ -910,6 +977,7 @@
       const el = document.getElementById("msg-" + s.key);
       if (el) el.remove();
       delete messagesCache[s.key];
+      checkEmptyState();
     });
   });
 })();

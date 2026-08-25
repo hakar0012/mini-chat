@@ -1,11 +1,11 @@
 /* =======================================================
-   ADMIN OVERLORD DASHBOARD STYLES
+   ADMIN OVERLORD DASHBOARD - MODERN STYLES
    ======================================================= */
 body.admin-page {
-  background: #020617;
+  background: radial-gradient(circle at top center, #1e293b 0%, #090d16 80%);
   color: var(--text-main);
   min-height: 100vh;
-  padding: 20px;
+  padding: 24px 16px;
 }
 
 .admin-container {
@@ -17,54 +17,116 @@ body.admin-page {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 30px;
-  border-bottom: 1px solid var(--border-color);
-  padding-bottom: 15px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 16px;
 }
 
 .admin-header h1 {
-  font-size: 24px;
-  color: var(--danger);
+  font-size: 22px;
+  color: #f87171;
   display: flex;
   align-items: center;
   gap: 10px;
+  font-weight: 700;
 }
 
 .btn-logout {
-  background: transparent;
-  border: 1px solid var(--border-color);
-  color: var(--text-muted);
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #f87171;
   padding: 8px 16px;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 14px;
-  transition: 0.2s;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
 }
 
 .btn-logout:hover {
-  border-color: var(--danger);
-  color: var(--danger);
+  background: var(--danger);
+  color: white;
+}
+
+/* Stat Cards */
+.admin-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  background: rgba(30, 41, 59, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-subtle);
+  padding: 16px;
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-main);
 }
 
 .admin-tabs {
   display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
+  gap: 8px;
+  margin-bottom: 16px;
+  background: rgba(15, 23, 42, 0.8);
+  padding: 4px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  width: fit-content;
 }
 
 .admin-tab {
-  padding: 10px 20px;
-  background: var(--bg-card);
+  padding: 8px 18px;
   border-radius: var(--radius-sm);
   cursor: pointer;
   font-weight: 500;
+  font-size: 14px;
+  color: var(--text-muted);
   user-select: none;
-  transition: 0.2s;
+  transition: all 0.2s ease;
 }
 
 .admin-tab.active {
   background: var(--danger);
   color: white;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+}
+
+.search-bar {
+  margin-bottom: 16px;
+  position: relative;
+}
+
+.search-bar input {
+  padding: 10px 14px 10px 36px;
+  border-radius: var(--radius-md);
+}
+
+.search-bar-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0.5;
+  pointer-events: none;
 }
 
 .admin-panel {
@@ -76,28 +138,36 @@ body.admin-page {
 }
 
 .list-item {
-  background: var(--bg-main);
-  border: 1px solid var(--border-color);
-  padding: 15px;
+  background: rgba(30, 41, 59, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-subtle);
+  padding: 14px 18px;
   border-radius: var(--radius-md);
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  transition: all 0.15s ease;
+}
+
+.list-item:hover {
+  background: rgba(30, 41, 59, 0.9);
+  border-color: var(--border-medium);
 }
 
 .item-info h3 {
-  font-size: 16px;
+  font-size: 15px;
   margin-bottom: 4px;
   display: flex;
   align-items: center;
   gap: 8px;
+  font-weight: 600;
 }
 
 .item-info p {
   font-size: 12px;
   color: var(--text-dim);
-  font-family: monospace;
+  font-family: ui-monospace, monospace;
 }
 
 .btn-action {
@@ -107,51 +177,60 @@ body.admin-page {
   cursor: pointer;
   font-size: 13px;
   font-weight: 600;
-  transition: opacity 0.2s;
+  transition: all 0.15s ease;
 }
 
 .btn-danger {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #f87171;
+}
+
+.btn-danger:hover {
   background: var(--danger);
   color: white;
 }
 
-.btn-danger:hover {
-  background: var(--danger-hover);
+.btn-success {
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #34d399;
 }
 
-.btn-success {
+.btn-success:hover {
   background: var(--success);
   color: white;
 }
 
-.btn-success:hover {
-  background: #059669;
-}
-
 .btn-warning {
-  background: var(--warning);
-  color: black;
+  background: rgba(245, 158, 11, 0.2);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
 }
 
 .btn-warning:hover {
-  opacity: 0.9;
+  background: var(--warning);
+  color: #000000;
 }
 
 .badge-banned {
   background: var(--danger);
   color: white;
   padding: 2px 8px;
-  border-radius: 12px;
+  border-radius: var(--radius-full);
   font-size: 11px;
+  font-weight: 700;
 }
 
 .badge-you {
-  color: var(--warning);
-  font-size: 13px;
+  color: #fbbf24;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .empty-state {
   text-align: center;
   padding: 40px;
   color: var(--text-dim);
+  font-size: 14px;
 }
