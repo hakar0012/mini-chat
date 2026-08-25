@@ -26,6 +26,7 @@
   const attachMenu = document.getElementById("attachMenu");
   const attachImageBtn = document.getElementById("attachImageBtn");
   const attachGifBtn = document.getElementById("attachGifBtn");
+  const attachPollBtn = document.getElementById("attachPollBtn");
   const typingIndicator = document.getElementById("typingIndicator");
   const mentionPopup = document.getElementById("mentionPopup");
   const jumpBottomBtn = document.getElementById("jumpBottomBtn");
@@ -630,7 +631,85 @@
     meta.innerHTML = `${escapeHtml(data.name || "anon")} · ${timeLabel(data.ts)} ${data.edited ? '<span class="edited">(edited)</span>' : ''}`;
 
     const body = document.createElement("div");
-    body.appendChild(parseMessageText(data.text));
+    if (data.text) {
+      body.appendChild(parseMessageText(data.text));
+    }
+
+    // Render Poll Component if message has a poll
+    if (data.isPoll && data.poll) {
+      const poll = data.poll;
+      const pollBox = document.createElement("div");
+      pollBox.className = "poll-container";
+
+      const pollHeader = document.createElement("div");
+      pollHeader.className = "poll-question";
+      pollHeader.innerHTML = `<span>📊</span> <span>${escapeHtml(poll.question || "Poll")}</span>`;
+      pollBox.appendChild(pollHeader);
+
+      const optionsBox = document.createElement("div");
+      optionsBox.className = "poll-options";
+
+      const votes = poll.votes || {};
+      const options = poll.options || [];
+      let totalVotes = 0;
+
+      // Calculate total votes
+      options.forEach((_, idx) => {
+        const optVotes = votes[idx] || {};
+        totalVotes += Object.keys(optVotes).length;
+      });
+
+      options.forEach((optText, idx) => {
+        const optVotes = votes[idx] || {};
+        const count = Object.keys(optVotes).length;
+        const percent = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
+        const hasVotedThis = optVotes[myUid] === true;
+
+        const optBtn = document.createElement("div");
+        optBtn.className = "poll-option-btn" + (hasVotedThis ? " voted" : "");
+        optBtn.onclick = (e) => {
+          e.stopPropagation();
+          togglePollVote(msgId, idx);
+        };
+
+        const fillEl = document.createElement("div");
+        fillEl.className = "poll-option-fill";
+        fillEl.style.width = percent + "%";
+        optBtn.appendChild(fillEl);
+
+        const contentEl = document.createElement("div");
+        contentEl.className = "poll-option-content";
+
+        const labelEl = document.createElement("div");
+        labelEl.className = "poll-option-label";
+        if (hasVotedThis) {
+          labelEl.innerHTML = `<span class="poll-option-check">✓</span> <span>${escapeHtml(optText)}</span>`;
+        } else {
+          labelEl.innerHTML = `<span>${escapeHtml(optText)}</span>`;
+        }
+
+        const statsEl = document.createElement("div");
+        statsEl.className = "poll-option-stats";
+        statsEl.textContent = `${count} (${percent}%)`;
+
+        contentEl.appendChild(labelEl);
+        contentEl.appendChild(statsEl);
+        optBtn.appendChild(contentEl);
+        optionsBox.appendChild(optBtn);
+      });
+
+      pollBox.appendChild(optionsBox);
+
+      const pollFooter = document.createElement("div");
+      pollFooter.className = "poll-footer";
+      pollFooter.innerHTML = `
+        <span>${totalVotes} total vote${totalVotes === 1 ? '' : 's'}</span>
+        <span>Click option to vote</span>
+      `;
+      pollBox.appendChild(pollFooter);
+
+      body.appendChild(pollBox);
+    }
 
     msgBox.appendChild(meta);
     msgBox.appendChild(body);
@@ -1243,6 +1322,131 @@
   }
 
   // =======================================================
+  // POLL SYSTEM (VOTING & CREATION)
+  // =======================================================
+  window.togglePollVote = async function(msgId, optionIndex) {
+    if (!myUid) return;
+    const msg = messagesCache[msgId];
+    if (!msg || !msg.poll) return;
+
+    const currentVotes = msg.poll.votes || {};
+    const hasVotedThis = currentVotes[optionIndex] && currentVotes[optionIndex][myUid];
+
+    // Remove vote from all options in this poll first
+    const updates = {};
+    (msg.poll.options || []).forEach((_, idx) => {
+      updates[`rooms/${room}/messages/${msgId}/poll/votes/${idx}/${myUid}`] = null;
+    });
+
+    // If wasn't already voted, add vote to this option
+    if (!hasVotedThis) {
+      updates[`rooms/${room}/messages/${msgId}/poll/votes/${optionIndex}/${myUid}`] = true;
+    }
+
+    try {
+      await db.ref().update(updates);
+    } catch (err) {
+      console.warn("Poll vote error:", err);
+    }
+  };
+
+  window.togglePollModal = function() {
+    const modal = document.getElementById("pollModal");
+    if (!modal) return;
+    const isHidden = modal.classList.toggle("hidden");
+    if (!isHidden) {
+      const qInput = document.getElementById("pollQuestionInput");
+      if (qInput) {
+        qInput.value = "";
+        qInput.focus();
+      }
+      const container = document.getElementById("pollOptionsContainer");
+      if (container) {
+        container.innerHTML = `
+          <input type="text" class="room-panel-input poll-option-input" placeholder="Option 1" required maxlength="80" autocomplete="off" />
+          <input type="text" class="room-panel-input poll-option-input" placeholder="Option 2" required maxlength="80" autocomplete="off" />
+        `;
+      }
+    }
+  };
+
+  window.addPollOptionRow = function() {
+    const container = document.getElementById("pollOptionsContainer");
+    if (!container) return;
+    const count = container.querySelectorAll(".poll-option-input").length;
+    if (count >= 10) {
+      alert("Maximum 10 options per poll.");
+      return;
+    }
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "room-panel-input poll-option-input";
+    input.placeholder = `Option ${count + 1}`;
+    input.required = true;
+    input.maxLength = 80;
+    input.autocomplete = "off";
+    container.appendChild(input);
+    input.focus();
+  };
+
+  window.submitPollForm = function(e) {
+    e.preventDefault();
+    const qInput = document.getElementById("pollQuestionInput");
+    const question = qInput ? qInput.value.trim() : "";
+    const optionInputs = document.querySelectorAll(".poll-option-input");
+    const options = [];
+    optionInputs.forEach(inp => {
+      const val = inp.value.trim();
+      if (val) options.push(val);
+    });
+
+    if (!question) {
+      alert("Please enter a question.");
+      return;
+    }
+    if (options.length < 2) {
+      alert("Please provide at least 2 options.");
+      return;
+    }
+
+    createPollMessage(question, options);
+    togglePollModal();
+  };
+
+  function createPollMessage(question, options) {
+    if (!myUid) return;
+    const newMsg = {
+      uid: myUid,
+      name: myName,
+      avatarType: myAvatarType,
+      avatarValue: myAvatarValue,
+      text: "",
+      isPoll: true,
+      poll: {
+        question: question,
+        options: options,
+        votes: {}
+      },
+      ts: firebase.database.ServerValue.TIMESTAMP
+    };
+    if (replyingTo) {
+      newMsg.replyToId = replyingTo.id;
+      newMsg.replyToName = replyingTo.name;
+      newMsg.replyToText = replyingTo.text;
+    }
+    messagesRef.push(newMsg);
+    cancelReply();
+  }
+
+  if (attachPollBtn) {
+    attachPollBtn.onclick = (e) => {
+      e.stopPropagation();
+      attachMenu.classList.add("hidden");
+      togglePollModal();
+    };
+  }
+
+  // =======================================================
   // CHAT FORM SUBMIT & SLASH COMMANDS
   // =======================================================
   chatForm.addEventListener("submit", async (e) => {
@@ -1272,8 +1476,23 @@
         const max = parseInt(arg, 10) || 6;
         const result = Math.floor(Math.random() * max) + 1;
         text = `🎲 Rolled a **${result}** (1-${max})`;
+      } else if (cmd === 'poll') {
+        const matches = [...arg.matchAll(/"([^"]+)"|'([^']+)'|(\S+)/g)].map(m => m[1] || m[2] || m[3]);
+        if (matches.length >= 3) {
+          const question = matches[0];
+          const options = matches.slice(1);
+          createPollMessage(question, options);
+          textInput.value = "";
+          return;
+        } else {
+          togglePollModal();
+          const qInput = document.getElementById("pollQuestionInput");
+          if (qInput && arg) qInput.value = arg.replace(/["']/g, '');
+          textInput.value = "";
+          return;
+        }
       } else if (cmd === 'help') {
-        alert("✨ Slash Commands:\n/shrug [text] - Post a shrug\n/tableflip [text] - Flip a table\n/unflip [text] - Put table back\n/flip - Flip a coin (Heads/Tails)\n/roll [max] - Roll dice (e.g. /roll 20)");
+        alert("✨ Slash Commands:\n/poll \"Question\" \"Opt1\" \"Opt2\" - Create a poll\n/shrug [text] - Post a shrug\n/tableflip [text] - Flip a table\n/unflip [text] - Put table back\n/flip - Flip a coin (Heads/Tails)\n/roll [max] - Roll dice (e.g. /roll 20)");
         textInput.value = "";
         return;
       }

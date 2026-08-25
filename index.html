@@ -7,8 +7,8 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Mini Group Chat</title>
-  <link rel="stylesheet" href="css/base.css?v=9" />
-  <link rel="stylesheet" href="css/chat.css?v=9" />
+  <link rel="stylesheet" href="css/base.css?v=10" />
+  <link rel="stylesheet" href="css/chat.css?v=10" />
 </head>
 <body class="chat-page">
   <!-- Header Bar (Full Width) -->
@@ -37,6 +37,7 @@
         <div id="attachMenu" class="attach-menu hidden">
           <button type="button" id="attachImageBtn" class="attach-menu-item">🖼️ Upload Image</button>
           <button type="button" id="attachGifBtn" class="attach-menu-item">🎞️ Search GIFs</button>
+          <button type="button" id="attachPollBtn" class="attach-menu-item">📊 Create Poll</button>
         </div>
       </div>
 
@@ -152,13 +153,43 @@
     </div>
   </div>
 
+  <!-- Create Poll Modal -->
+  <div id="pollModal" class="modal hidden">
+    <div class="modal-content" style="max-width: 380px;">
+      <div class="modal-header">
+        <strong>📊 Create a Poll</strong>
+        <span class="close-modal" onclick="togglePollModal()">×</span>
+      </div>
+      <form id="pollForm" onsubmit="submitPollForm(event)">
+        <div style="margin-bottom: 12px;">
+          <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">Question</label>
+          <input type="text" id="pollQuestionInput" class="room-panel-input" placeholder="Ask a question..." required maxlength="200" autocomplete="off" />
+        </div>
+
+        <div style="margin-bottom: 12px;">
+          <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">Options</label>
+          <div id="pollOptionsContainer" style="display: flex; flex-direction: column; gap: 8px;">
+            <input type="text" class="room-panel-input poll-option-input" placeholder="Option 1" required maxlength="80" autocomplete="off" />
+            <input type="text" class="room-panel-input poll-option-input" placeholder="Option 2" required maxlength="80" autocomplete="off" />
+          </div>
+          <button type="button" class="btn-test-sound" style="width: 100%; margin-top: 8px;" onclick="addPollOptionRow()">+ Add Option</button>
+        </div>
+
+        <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px;">
+          <button type="button" class="btn-test-sound" onclick="togglePollModal()">Cancel</button>
+          <button type="submit" class="room-panel-btn" style="margin: 0; width: auto; padding: 0 18px;">Create Poll</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Firebase SDKs (Compat) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 
   <!-- App Scripts -->
-  <script src="js/firebase-init.js?v=9"></script>
-  <script src="js/chat.js?v=9"></script>
+  <script src="js/firebase-init.js?v=10"></script>
+  <script src="js/chat.js?v=10"></script>
 </body>
 </html>
