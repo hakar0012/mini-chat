@@ -28,6 +28,8 @@
   const attachGifBtn = document.getElementById("attachGifBtn");
   const typingIndicator = document.getElementById("typingIndicator");
   const mentionPopup = document.getElementById("mentionPopup");
+  const jumpBottomBtn = document.getElementById("jumpBottomBtn");
+  const jumpBottomText = document.getElementById("jumpBottomText");
 
   // --- State Variables ---
   let myName = "", myUid = "", myAvatarType = "", myAvatarValue = "";
@@ -46,6 +48,7 @@
   let isInitialLoadDone = false;
   let mentionSelectedIndex = 0;
   let currentMentionMatches = [];
+  let unreadCount = 0;
 
   // =======================================================
   // AUDIO CHIMES & BROWSER NOTIFICATIONS
@@ -654,6 +657,25 @@
     }
   }
 
+  window.jumpToBottom = function() {
+    messagesEl.scrollTo({ top: messagesEl.scrollHeight, behavior: 'smooth' });
+    hideJumpBtn();
+  };
+
+  function showJumpBtn(count) {
+    if (!jumpBottomBtn) return;
+    jumpBottomBtn.classList.remove('hidden');
+    if (jumpBottomText) {
+      jumpBottomText.textContent = count > 1 ? `${count} new messages` : 'New messages';
+    }
+  }
+
+  function hideJumpBtn() {
+    if (!jumpBottomBtn) return;
+    unreadCount = 0;
+    jumpBottomBtn.classList.add('hidden');
+  }
+
   function addMessage(data, msgId, prepend = false) {
     const existingHero = document.querySelector('.empty-hero');
     if (existingHero) existingHero.remove();
@@ -665,10 +687,17 @@
     if (prepend) {
       messagesEl.insertBefore(row, messagesEl.firstChild);
     } else {
-      const nearBottom = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 100;
+      const nearBottom = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 120;
       messagesEl.appendChild(row);
       const isMine = data.uid === myUid;
-      if (nearBottom || isMine) messagesEl.scrollTop = messagesEl.scrollHeight;
+      
+      if (nearBottom || isMine) {
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+        hideJumpBtn();
+      } else if (isInitialLoadDone) {
+        unreadCount++;
+        showJumpBtn(unreadCount);
+      }
 
       // Audio and Notification handling for incoming live messages
       if (isInitialLoadDone && !isMine) {
@@ -720,6 +749,10 @@
   messagesEl.addEventListener('scroll', () => {
     if (messagesEl.scrollTop === 0) {
       loadOlderMessages();
+    }
+    const isNearBottom = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 80;
+    if (isNearBottom) {
+      hideJumpBtn();
     }
   });
 
