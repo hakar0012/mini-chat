@@ -714,7 +714,7 @@
           return;
         }
 
-        // 4. Instagram Posts & Reels (kkinstagram Discord Fix)
+        // 4. Instagram Posts & Reels (kkinstagram Discord Fix Live Player)
         const igMatch = part.match(/instagram\.com\/(p|reel|tv|reels)\/([a-zA-Z0-9_-]+)/i);
         if (igMatch) {
           const type = igMatch[1];
@@ -727,22 +727,14 @@
               <div class="embed-link-title"><span>📷</span> Instagram</div>
               <a href="${escapeHtml(part)}" class="embed-link-url" target="_blank" rel="noopener noreferrer">${escapeHtml(part)}</a>
             </div>
-            <div class="embed-ig-body">
-              <div class="embed-ig-preview">
-                <div class="embed-ig-icon">📸</div>
-                <div class="embed-ig-info">
-                  <div class="embed-ig-title">Instagram ${type === 'reel' || type === 'reels' ? 'Reel' : 'Post'}</div>
-                  <div class="embed-ig-sub">Watch via kkinstagram media fix</div>
-                </div>
-              </div>
-              <div class="embed-ig-actions">
-                <a href="${kkUrl}" target="_blank" rel="noopener noreferrer" class="embed-open-btn-kk">
-                  <span>▶ Watch on kkinstagram</span> ↗
-                </a>
-                <a href="${escapeHtml(part)}" target="_blank" rel="noopener noreferrer" class="embed-open-btn-ig">
-                  <span>Instagram</span> ↗
-                </a>
-              </div>
+            <div class="embed-kk-wrapper">
+              <iframe class="embed-kkinstagram-wrapper" 
+                      src="${kkUrl}" 
+                      frameborder="0" 
+                      scrolling="no" 
+                      allow="autoplay; encrypted-media; picture-in-picture; clipboard-write; web-share" 
+                      allowfullscreen 
+                      loading="lazy"></iframe>
             </div>
           `;
           fragment.appendChild(embedBox);

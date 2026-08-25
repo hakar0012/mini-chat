@@ -642,90 +642,23 @@ main#messages {
   background: #000;
 }
 
-/* KKInstagram / Instagram Media Card */
-.embed-ig-body {
-  padding: 10px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  background: rgba(0, 0, 0, 0.3);
-}
-
-.embed-ig-preview {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.embed-ig-icon {
-  font-size: 26px;
-  flex-shrink: 0;
-}
-
-.embed-ig-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+/* KKInstagram / Instagram Embed Wrapper */
+.embed-kk-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 360px;
+  height: 480px;
+  background: #000;
   overflow: hidden;
+  display: block;
 }
 
-.embed-ig-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: #ffffff;
-}
-
-.embed-ig-sub {
-  font-size: 11.5px;
-  color: var(--text-dim);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.embed-ig-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 2px;
-}
-
-.embed-open-btn-kk {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
-  color: white !important;
-  text-decoration: none !important;
-  padding: 5px 12px;
-  border-radius: var(--radius-sm);
-  font-size: 11.5px;
-  font-weight: 600;
-  transition: opacity 0.15s ease;
-}
-
-.embed-open-btn-kk:hover {
-  opacity: 0.9;
-}
-
-.embed-open-btn-ig {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--text-main) !important;
-  text-decoration: none !important;
-  padding: 5px 10px;
-  border-radius: var(--radius-sm);
-  font-size: 11.5px;
-  font-weight: 500;
-  transition: background 0.15s ease;
-}
-
-.embed-open-btn-ig:hover {
-  background: rgba(255, 255, 255, 0.18);
+.embed-kkinstagram-wrapper {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+  background: #000;
 }
 
 .embed-spotify-wrapper {
