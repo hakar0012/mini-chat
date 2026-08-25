@@ -556,13 +556,13 @@ main#messages {
 /* =======================================================
    RICH MEDIA EMBEDS (YouTube, TikTok, FB, IG, Spotify)
    ======================================================= */
-.msg:has(.embed-container) {
+.msg-row .msg:has(.embed-container),
+.msg-row.mine .msg:has(.embed-container) {
   padding: 6px 8px;
 }
 
 .embed-container {
-  margin-top: 2px;
-  margin-bottom: 2px;
+  margin: 2px 0 0 0;
   border-radius: var(--radius-sm);
   overflow: hidden;
   max-width: 380px;
@@ -573,7 +573,7 @@ main#messages {
 }
 
 .embed-link-header {
-  padding: 5px 8px;
+  padding: 4px 8px;
   font-size: 11.5px;
   background: rgba(255, 255, 255, 0.05);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
@@ -642,23 +642,55 @@ main#messages {
   background: #000;
 }
 
-.embed-instagram-wrapper {
-  width: 100%;
-  max-width: 350px;
-  height: 420px;
-  border: 0;
-  display: block;
-  background: #ffffff;
-}
-
-.embed-card-fallback {
+/* KKInstagram / Instagram Media Card */
+.embed-ig-body {
   padding: 10px 12px;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  background: rgba(0, 0, 0, 0.3);
 }
 
-.embed-open-btn {
+.embed-ig-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.embed-ig-icon {
+  font-size: 26px;
+  flex-shrink: 0;
+}
+
+.embed-ig-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.embed-ig-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.embed-ig-sub {
+  font-size: 11.5px;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.embed-ig-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.embed-open-btn-kk {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -666,16 +698,34 @@ main#messages {
   background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
   color: white !important;
   text-decoration: none !important;
-  padding: 6px 12px;
+  padding: 5px 12px;
   border-radius: var(--radius-sm);
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 600;
   transition: opacity 0.15s ease;
-  width: fit-content;
 }
 
-.embed-open-btn:hover {
+.embed-open-btn-kk:hover {
   opacity: 0.9;
+}
+
+.embed-open-btn-ig {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-main) !important;
+  text-decoration: none !important;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 11.5px;
+  font-weight: 500;
+  transition: background 0.15s ease;
+}
+
+.embed-open-btn-ig:hover {
+  background: rgba(255, 255, 255, 0.18);
 }
 
 .embed-spotify-wrapper {

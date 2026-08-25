@@ -714,9 +714,12 @@
           return;
         }
 
-        // 4. Instagram Posts & Reels
-        const igMatch = part.match(/instagram\.com\/(?:p|reel|tv|reels)\/([a-zA-Z0-9_-]+)/i);
+        // 4. Instagram Posts & Reels (kkinstagram Discord Fix)
+        const igMatch = part.match(/instagram\.com\/(p|reel|tv|reels)\/([a-zA-Z0-9_-]+)/i);
         if (igMatch) {
+          const type = igMatch[1];
+          const postId = igMatch[2];
+          const kkUrl = `https://www.kkinstagram.com/${type}/${postId}`;
           const embedBox = document.createElement("div");
           embedBox.className = "embed-container";
           embedBox.innerHTML = `
@@ -724,13 +727,22 @@
               <div class="embed-link-title"><span>📷</span> Instagram</div>
               <a href="${escapeHtml(part)}" class="embed-link-url" target="_blank" rel="noopener noreferrer">${escapeHtml(part)}</a>
             </div>
-            <div style="background: rgba(0, 0, 0, 0.4); padding: 18px 14px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px;">
-              <div style="font-size: 28px;">📸</div>
-              <div style="font-size: 13.5px; font-weight: 600; color: #fff;">Instagram Post / Reel</div>
-              <div style="font-size: 11.5px; color: var(--text-dim); max-width: 250px;">Tap below to view this media on Instagram</div>
-              <a href="${escapeHtml(part)}" target="_blank" rel="noopener noreferrer" class="embed-open-btn">
-                <span>Open on Instagram</span> ↗
-              </a>
+            <div class="embed-ig-body">
+              <div class="embed-ig-preview">
+                <div class="embed-ig-icon">📸</div>
+                <div class="embed-ig-info">
+                  <div class="embed-ig-title">Instagram ${type === 'reel' || type === 'reels' ? 'Reel' : 'Post'}</div>
+                  <div class="embed-ig-sub">Watch via kkinstagram media fix</div>
+                </div>
+              </div>
+              <div class="embed-ig-actions">
+                <a href="${kkUrl}" target="_blank" rel="noopener noreferrer" class="embed-open-btn-kk">
+                  <span>▶ Watch on kkinstagram</span> ↗
+                </a>
+                <a href="${escapeHtml(part)}" target="_blank" rel="noopener noreferrer" class="embed-open-btn-ig">
+                  <span>Instagram</span> ↗
+                </a>
+              </div>
             </div>
           `;
           fragment.appendChild(embedBox);
