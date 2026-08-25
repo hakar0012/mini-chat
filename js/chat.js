@@ -29,6 +29,7 @@
   const attachPollBtn = document.getElementById("attachPollBtn");
   const typingIndicator = document.getElementById("typingIndicator");
   const mentionPopup = document.getElementById("mentionPopup");
+  const commandPopup = document.getElementById("commandPopup");
   const jumpBottomBtn = document.getElementById("jumpBottomBtn");
   const jumpBottomText = document.getElementById("jumpBottomText");
   const emojiBtn = document.getElementById("emojiBtn");
@@ -327,6 +328,143 @@
     mentionPopup.classList.add("hidden");
     currentMentionMatches = [];
     mentionSelectedIndex = 0;
+  }
+
+  // =======================================================
+  // SLASH COMMAND AUTOCOMPLETE SYSTEM (/)
+  // =======================================================
+  const SLASH_COMMANDS = [
+    { cmd: '/poll', icon: '📊', name: '/poll "Question" "Opt1" "Opt2"', desc: 'Create an interactive poll' },
+    { cmd: '/flip', icon: '🪙', name: '/flip', desc: 'Flip a coin (Heads or Tails)' },
+    { cmd: '/roll', icon: '🎲', name: '/roll [max]', desc: 'Roll a dice (e.g. /roll 20)' },
+    { cmd: '/shrug', icon: '🤷', name: '/shrug [text]', desc: 'Post ¯\\_(ツ)_/¯' },
+    { cmd: '/tableflip', icon: '┻━┻', name: '/tableflip [text]', desc: 'Flip a table (╯°□°)╯︵ ┻━┻' },
+    { cmd: '/unflip', icon: '┬─┬', name: '/unflip [text]', desc: 'Put table back ┬─┬ノ( º _ ºノ)' },
+    { cmd: '/help', icon: '✨', name: '/help', desc: 'View all commands guide' }
+  ];
+
+  let commandSelectedIndex = 0;
+  let currentCommandMatches = [];
+
+  function initCommandSystem() {
+    if (!commandPopup) return;
+
+    textInput.addEventListener("input", handleCommandInput);
+    textInput.addEventListener("keydown", handleCommandKeydown);
+    document.addEventListener("click", (e) => {
+      if (!commandPopup.contains(e.target) && e.target !== textInput) {
+        closeCommandPopup();
+      }
+    });
+  }
+
+  function handleCommandInput() {
+    const val = textInput.value;
+    // Trigger when input starts with '/'
+    if (!val.startsWith('/')) {
+      closeCommandPopup();
+      return;
+    }
+
+    const query = val.slice(1).toLowerCase().split(/\s+/)[0];
+    const matches = SLASH_COMMANDS.filter(c => c.cmd.slice(1).startsWith(query));
+
+    if (matches.length === 0) {
+      closeCommandPopup();
+      return;
+    }
+
+    currentCommandMatches = matches;
+    commandSelectedIndex = 0;
+    renderCommandPopup();
+  }
+
+  function renderCommandPopup() {
+    commandPopup.innerHTML = "";
+    commandPopup.classList.remove("hidden");
+
+    currentCommandMatches.forEach((cmdObj, idx) => {
+      const div = document.createElement("div");
+      div.className = "command-item" + (idx === commandSelectedIndex ? " selected" : "");
+
+      const iconSpan = document.createElement("span");
+      iconSpan.className = "command-item-icon";
+      iconSpan.textContent = cmdObj.icon;
+      div.appendChild(iconSpan);
+
+      const contentDiv = document.createElement("div");
+      contentDiv.className = "command-item-content";
+
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "command-item-name";
+      nameSpan.textContent = cmdObj.name;
+      contentDiv.appendChild(nameSpan);
+
+      const descSpan = document.createElement("span");
+      descSpan.className = "command-item-desc";
+      descSpan.textContent = cmdObj.desc;
+      contentDiv.appendChild(descSpan);
+
+      div.appendChild(contentDiv);
+
+      div.onmousedown = (e) => {
+        e.preventDefault();
+        selectCommand(cmdObj);
+      };
+
+      commandPopup.appendChild(div);
+    });
+  }
+
+  function handleCommandKeydown(e) {
+    if (commandPopup.classList.contains("hidden")) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      commandSelectedIndex = (commandSelectedIndex + 1) % currentCommandMatches.length;
+      updateCommandSelection();
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      commandSelectedIndex = (commandSelectedIndex - 1 + currentCommandMatches.length) % currentCommandMatches.length;
+      updateCommandSelection();
+    } else if (e.key === "Enter" || e.key === "Tab") {
+      if (currentCommandMatches[commandSelectedIndex]) {
+        e.preventDefault();
+        selectCommand(currentCommandMatches[commandSelectedIndex]);
+      }
+    } else if (e.key === "Escape") {
+      closeCommandPopup();
+    }
+  }
+
+  function updateCommandSelection() {
+    const items = commandPopup.querySelectorAll(".command-item");
+    items.forEach((it, idx) => {
+      it.classList.toggle("selected", idx === commandSelectedIndex);
+    });
+  }
+
+  function selectCommand(cmdObj) {
+    if (cmdObj.cmd === '/poll') {
+      textInput.value = "";
+      closeCommandPopup();
+      togglePollModal();
+      return;
+    }
+
+    if (cmdObj.cmd === '/flip' || cmdObj.cmd === '/help') {
+      textInput.value = cmdObj.cmd;
+    } else {
+      textInput.value = cmdObj.cmd + ' ';
+    }
+    closeCommandPopup();
+    textInput.focus();
+  }
+
+  function closeCommandPopup() {
+    if (commandPopup) commandPopup.classList.add("hidden");
+    currentCommandMatches = [];
+    commandSelectedIndex = 0;
   }
 
   // =======================================================
@@ -1644,6 +1782,7 @@
     let text = textInput.value.trim();
     stopTyping();
     closeMentionPopup();
+    closeCommandPopup();
     closeEmojiPicker();
     if (!text) return;
 
@@ -1872,9 +2011,10 @@
     chatForm.classList.remove("hidden");
     textInput.focus();
 
-    // Initialize @mention Autocomplete & Emoji Picker
+    // Initialize @mention Autocomplete, Emoji Picker & Slash Commands
     initMentionSystem();
     initEmojiPicker();
+    initCommandSystem();
 
     // Check empty state initially
     checkEmptyState();
