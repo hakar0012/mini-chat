@@ -4,49 +4,11 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Mini Group Chat - Login</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: system-ui, -apple-system, sans-serif;
-      background: #0f172a; color: #e5e7eb;
-      display: flex; align-items: center; justify-content: center;
-      min-height: 100vh; padding: 20px;
-    }
-    .card {
-      background: #1e293b; padding: 30px; border-radius: 16px;
-      width: 100%; max-width: 380px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-    }
-    h1 { text-align: center; margin-bottom: 24px; font-size: 24px; }
-    
-    .tabs { display: flex; margin-bottom: 20px; background: #0f172a; border-radius: 8px; padding: 4px; }
-    .tab { flex: 1; text-align: center; padding: 10px; cursor: pointer; border-radius: 6px; font-weight: 500; transition: 0.2s; }
-    .tab.active { background: #2563eb; color: white; }
-    
-    .field { margin-bottom: 16px; }
-    label { display: block; font-size: 14px; margin-bottom: 6px; opacity: 0.8; }
-    input[type="text"], input[type="password"] {
-      width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155;
-      background: #0f172a; color: white; font-size: 16px; outline: none;
-    }
-    input:focus { border-color: #2563eb; }
-    
-    .checkbox-field { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; font-size: 14px; cursor: pointer; }
-    .checkbox-field input { width: 18px; height: 18px; cursor: pointer; }
-    
-    button {
-      width: 100%; padding: 14px; border: none; border-radius: 8px;
-      background: #2563eb; color: white; font-size: 16px; font-weight: 600;
-      cursor: pointer; transition: 0.2s;
-    }
-    button:hover { background: #1d4ed8; }
-    button:disabled { opacity: 0.6; cursor: not-allowed; }
-    
-    .error { color: #ef4444; background: rgba(239,68,68,0.1); padding: 10px; border-radius: 6px; font-size: 14px; margin-bottom: 16px; display: none; text-align: center; }
-    .hint { font-size: 12px; opacity: 0.6; text-align: center; margin-top: 16px; }
-  </style>
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/auth.css" />
 </head>
-<body>
-  <div class="card">
+<body class="auth-page">
+  <div class="auth-card">
     <h1>Mini Group Chat</h1>
     
     <div class="tabs">
@@ -54,16 +16,16 @@
       <div class="tab" onclick="switchMode('signup')">Sign Up</div>
     </div>
 
-    <div class="error" id="errorMsg"></div>
+    <div class="error-banner" id="errorMsg"></div>
 
     <form id="authForm">
       <div class="field">
-        <label>Username</label>
+        <label for="username">Username</label>
         <input type="text" id="username" placeholder="Username here" autocomplete="username" required />
       </div>
       
       <div class="field">
-        <label>Password</label>
+        <label for="password">Password</label>
         <input type="password" id="password" placeholder="Minimum 6 characters" autocomplete="current-password" required minlength="6" />
       </div>
 
@@ -72,158 +34,23 @@
         Remember me on this device
       </label>
 
-      <button type="submit" id="submitBtn">Login</button>
+      <button type="submit" class="auth-submit-btn" id="submitBtn">Login</button>
     </form>
 
-    <div class="hint">Your username must be unique.</div>
+    <div class="auth-hint">Your username must be unique.</div>
+    
+    <div class="auth-footer">
+      <a href="#" id="forceLogout">Stuck? Force Logout</a>
+    </div>
   </div>
 
+  <!-- Firebase SDKs (Compat) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
-  <script>
-    // -------------------------------------------------------
-    // PASTE YOUR FIREBASE CONFIG HERE
-    // -------------------------------------------------------
-    const firebaseConfig = {
-      apiKey: "AIzaSyAbiBOlaMX7OjPvx5efi0Z3MOddr94wgKQ",
-      authDomain: "mini-chaty.firebaseapp.com",
-      databaseURL: "https://mini-chaty-default-rtdb.firebaseio.com",
-      projectId: "mini-chaty",
-      storageBucket: "mini-chaty.firebasestorage.app",
-      messagingSenderId: "524920955180",
-      appId: "1:524920955180:web:3b9f8ff90e89a709388c89"
-    };
-    // -------------------------------------------------------
-
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.database();
-    const DOMAIN = '@minichat.local';
-
-    const tabs = document.querySelectorAll('.tab');
-    const errorMsg = document.getElementById('errorMsg');
-    const submitBtn = document.getElementById('submitBtn');
-    const authForm = document.getElementById('authForm');
-    
-    let currentMode = 'login';
-
-    window.switchMode = (mode) => {
-      currentMode = mode;
-      tabs[0].classList.toggle('active', mode === 'login');
-      tabs[1].classList.toggle('active', mode === 'signup');
-      submitBtn.textContent = mode === 'login' ? 'Login' : 'Create Account';
-      errorMsg.style.display = 'none';
-    };
-
-    function showError(msg) {
-      errorMsg.textContent = msg;
-      errorMsg.style.display = 'block';
-    }
-
-    authForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      errorMsg.style.display = 'none';
-      
-      const rawUsername = document.getElementById('username').value.trim();
-      const password = document.getElementById('password').value;
-      const remember = document.getElementById('rememberMe').checked;
-
-      if (!rawUsername || !password) return;
-      
-      // Clean username (lowercase, no spaces)
-      const cleanUsername = rawUsername.toLowerCase().replace(/\s+/g, '');
-      const fakeEmail = cleanUsername + DOMAIN;
-
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Please wait...';
-
-      try {
-        // 1. Set Persistence (Remember Me)
-        const persistenceType = remember ? firebase.auth.Auth.Persistence.LOCAL : firebase.auth.Auth.Persistence.SESSION;
-        await auth.setPersistence(persistenceType);
-
-        let userCredential;
-
-        // 2. Login or Sign Up
-        if (currentMode === 'signup') {
-          userCredential = await auth.createUserWithEmailAndPassword(fakeEmail, password);
-        } else {
-          userCredential = await auth.signInWithEmailAndPassword(fakeEmail, password);
-        }
-
-        const uid = userCredential.user.uid;
-
-        // 3. Check if user is banned
-        const banSnap = await db.ref('bannedUsers/' + uid).once('value');
-        if (banSnap.exists()) {
-          await auth.signOut();
-          throw new Error("This account has been banned by an admin.");
-        }
-
-        // 4. Success! Redirect to profile (if new) or chat
-        const profileSnap = await db.ref('users/' + uid).once('value');
-        if (!profileSnap.exists()) {
-          // Save their preferred display name to the profile so profile.html can use it
-          await db.ref('users/' + uid).set({
-            name: rawUsername, // Use the original casing they typed
-            avatarType: 'initials',
-            avatarValue: '#2563eb',
-            createdAt: firebase.database.ServerValue.TIMESTAMP
-          });
-          // Claim the lowercase username in the usernames database so no one else can take it
-          await db.ref('usernames/' + cleanUsername).set({ uid: uid });
-          
-          window.location.href = 'profile.html';
-        } else {
-          window.location.href = 'index.html';
-        }
-
-      } catch (err) {
-        console.error(err);
-        let friendlyError = "An error occurred. Please try again.";
-        
-        if (err.code === 'auth/email-already-in-use') {
-          friendlyError = "That username is already taken.";
-        } else if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
-          friendlyError = "Invalid username or password.";
-        } else if (err.code === 'auth/weak-password') {
-          friendlyError = "Password must be at least 6 characters.";
-        } else if (err.message.includes("banned")) {
-          friendlyError = err.message;
-        }
-        
-        showError(friendlyError);
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = currentMode === 'login' ? 'Login' : 'Create Account';
-      }
-    });
-
-    // If they are already logged in and not banned, bypass the login screen <-old
-    auth.onAuthStateChanged(async (user) => {
-      if (user && !user.isAnonymous) {
-        const banSnap = await db.ref('bannedUsers/' + user.uid).once('value');
-        if (banSnap.exists()) {
-          auth.signOut();
-          return;
-        }
-        const profileSnap = await db.ref('users/' + user.uid).once('value');
-        if (profileSnap.exists()) {
-          window.location.href = 'index.html';
-        } else {
-          window.location.href = 'profile.html';
-        }
-      }
-    });
-    document.getElementById('forceLogout').onclick = (e) => {
-      e.preventDefault();
-      firebase.auth().signOut().then(() => location.reload());
-    };
-  </script>
-    <div style="text-align:center; margin-top:30px; font-size:12px; opacity:0.5;">
-    <a href="#" id="forceLogout" style="color:#e5e7eb; text-decoration:none;">Stuck? Force Logout</a>
-  </div>
+  <!-- App Scripts -->
+  <script src="js/firebase-init.js"></script>
+  <script src="js/auth.js"></script>
 </body>
 </html>
