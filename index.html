@@ -7,8 +7,8 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Mini Group Chat</title>
-  <link rel="stylesheet" href="css/base.css?v=6" />
-  <link rel="stylesheet" href="css/chat.css?v=6" />
+  <link rel="stylesheet" href="css/base.css?v=7" />
+  <link rel="stylesheet" href="css/chat.css?v=7" />
 </head>
 <body class="chat-page">
   <!-- Header Bar (Full Width) -->
@@ -64,6 +64,70 @@
     </div>
   </div>
 
+  <!-- Notification Settings Modal -->
+  <div id="notifModal" class="modal hidden">
+    <div class="modal-content" style="max-width: 360px;">
+      <div class="modal-header">
+        <strong>🔔 Notification Settings</strong>
+        <span class="close-modal" onclick="toggleNotifModal()">×</span>
+      </div>
+      
+      <div class="notif-settings-body">
+        <!-- Master Mute Toggle -->
+        <div class="notif-option-row highlight-row">
+          <div>
+            <div class="notif-title">Mute All Alerts</div>
+            <div class="notif-desc">Silence all sounds & popups</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="notifMasterMute" onchange="saveNotifPrefs()" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <!-- Normal Messages Section -->
+        <div class="notif-section-title">💬 Normal Messages</div>
+        <div class="notif-option-row">
+          <span>Play Sound</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="notifNormalSound" onchange="saveNotifPrefs()" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="notif-option-row">
+          <span>Desktop Notification</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="notifNormalDesktop" onchange="saveNotifPrefs()" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <!-- Mentions Section -->
+        <div class="notif-section-title">📣 @Mentions & Replies</div>
+        <div class="notif-option-row">
+          <span>Play Sound</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="notifMentionSound" onchange="saveNotifPrefs()" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="notif-option-row">
+          <span>Desktop Notification</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="notifMentionDesktop" onchange="saveNotifPrefs()" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <!-- Test Sound Actions -->
+        <div class="notif-test-actions">
+          <button type="button" class="btn-test-sound" onclick="testSound(false)">🎵 Test Message</button>
+          <button type="button" class="btn-test-sound" onclick="testSound(true)">🔔 Test Mention</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Room Switcher Drawer -->
   <div id="roomPanelOverlay" class="room-panel-overlay" onclick="closeRoomPanel()"></div>
   <div id="roomPanel" class="room-panel">
@@ -87,7 +151,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 
   <!-- App Scripts -->
-  <script src="js/firebase-init.js?v=6"></script>
-  <script src="js/chat.js?v=6"></script>
+  <script src="js/firebase-init.js?v=7"></script>
+  <script src="js/chat.js?v=7"></script>
 </body>
 </html>

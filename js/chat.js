@@ -51,8 +51,63 @@
   let unreadCount = 0;
 
   // =======================================================
-  // AUDIO CHIMES & BROWSER NOTIFICATIONS
+  // AUDIO CHIMES & BROWSER NOTIFICATIONS PREFERENCES
   // =======================================================
+  const DEFAULT_NOTIF_PREFS = {
+    masterMute: false,
+    normalSound: true,
+    normalDesktop: true,
+    mentionSound: true,
+    mentionDesktop: true
+  };
+
+  function getNotifPrefs() {
+    try {
+      const raw = localStorage.getItem('chat_notif_prefs');
+      return raw ? { ...DEFAULT_NOTIF_PREFS, ...JSON.parse(raw) } : { ...DEFAULT_NOTIF_PREFS };
+    } catch (e) {
+      return { ...DEFAULT_NOTIF_PREFS };
+    }
+  }
+
+  window.saveNotifPrefs = function() {
+    const prefs = {
+      masterMute: document.getElementById('notifMasterMute')?.checked || false,
+      normalSound: document.getElementById('notifNormalSound')?.checked || false,
+      normalDesktop: document.getElementById('notifNormalDesktop')?.checked || false,
+      mentionSound: document.getElementById('notifMentionSound')?.checked || false,
+      mentionDesktop: document.getElementById('notifMentionDesktop')?.checked || false
+    };
+    localStorage.setItem('chat_notif_prefs', JSON.stringify(prefs));
+    updateSoundBtn();
+
+    if ((prefs.normalDesktop || prefs.mentionDesktop) && !prefs.masterMute) {
+      if ("Notification" in window && Notification.permission === "default") {
+        Notification.requestPermission();
+      }
+    }
+  };
+
+  window.toggleNotifModal = function() {
+    const modal = document.getElementById('notifModal');
+    if (!modal) return;
+    const isHidden = modal.classList.toggle('hidden');
+    if (!isHidden) loadNotifPrefsIntoUI();
+  };
+
+  function loadNotifPrefsIntoUI() {
+    const prefs = getNotifPrefs();
+    if (document.getElementById('notifMasterMute')) document.getElementById('notifMasterMute').checked = prefs.masterMute;
+    if (document.getElementById('notifNormalSound')) document.getElementById('notifNormalSound').checked = prefs.normalSound;
+    if (document.getElementById('notifNormalDesktop')) document.getElementById('notifNormalDesktop').checked = prefs.normalDesktop;
+    if (document.getElementById('notifMentionSound')) document.getElementById('notifMentionSound').checked = prefs.mentionSound;
+    if (document.getElementById('notifMentionDesktop')) document.getElementById('notifMentionDesktop').checked = prefs.mentionDesktop;
+  }
+
+  window.testSound = function(isMention) {
+    playChime(isMention, true);
+  };
+
   let audioCtx = null;
   function getAudioContext() {
     if (!audioCtx) {
@@ -64,30 +119,23 @@
     return audioCtx;
   }
 
-  function isMuted() {
-    return localStorage.getItem('chat_muted') === 'true';
-  }
-
-  function toggleSound() {
-    const muted = !isMuted();
-    localStorage.setItem('chat_muted', muted ? 'true' : 'false');
-    updateSoundBtn();
-    if (!muted && "Notification" in window && Notification.permission === "default") {
-      Notification.requestPermission();
-    }
-  }
-
   function updateSoundBtn() {
     const btn = document.getElementById('soundToggleBtn');
     if (btn) {
-      const muted = isMuted();
-      btn.innerHTML = muted ? '🔕' : '🔔';
-      btn.title = muted ? 'Unmute notifications & sound' : 'Mute notifications & sound';
+      const prefs = getNotifPrefs();
+      btn.innerHTML = prefs.masterMute ? '🔕' : '🔔';
+      btn.title = prefs.masterMute ? 'Notifications are muted (Click for settings)' : 'Notification settings';
     }
   }
 
-  function playChime(isMention = false) {
-    if (isMuted()) return;
+  function playChime(isMention = false, force = false) {
+    const prefs = getNotifPrefs();
+    if (!force) {
+      if (prefs.masterMute) return;
+      if (isMention && !prefs.mentionSound) return;
+      if (!isMention && !prefs.normalSound) return;
+    }
+
     try {
       const ctx = getAudioContext();
       const now = ctx.currentTime;
@@ -97,7 +145,7 @@
       gain.connect(ctx.destination);
 
       if (isMention) {
-        // High priority 3-tone arpeggio (G5, B5, E6)
+        // Cheerful 3-note arpeggio (G5, B5, E6)
         osc.type = 'sine';
         osc.frequency.setValueAtTime(784, now);
         osc.frequency.setValueAtTime(987, now + 0.08);
@@ -122,7 +170,8 @@
   }
 
   function sendNotification(title, body) {
-    if (isMuted()) return;
+    const prefs = getNotifPrefs();
+    if (prefs.masterMute) return;
     if (!("Notification" in window)) return;
     if (Notification.permission === "granted") {
       try {
@@ -701,11 +750,17 @@
 
       // Audio and Notification handling for incoming live messages
       if (isInitialLoadDone && !isMine) {
+        const prefs = getNotifPrefs();
         const isMention = myName && data.text && data.text.toLowerCase().includes('@' + myName.toLowerCase());
+        
         playChime(isMention);
-        if (document.hidden) {
-          const notifTitle = isMention ? `@${data.name || 'Someone'} mentioned you in #${room}` : `${data.name || 'Someone'} in #${room}`;
-          sendNotification(notifTitle, data.text || 'Sent an attachment');
+
+        if (document.hidden && !prefs.masterMute) {
+          if (isMention && prefs.mentionDesktop) {
+            sendNotification(`@${data.name || 'Someone'} mentioned you in #${room}`, data.text || 'Sent an attachment');
+          } else if (!isMention && prefs.normalDesktop) {
+            sendNotification(`${data.name || 'Someone'} in #${room}`, data.text || 'Sent an attachment');
+          }
         }
       }
     }
@@ -1222,7 +1277,7 @@
     const soundBtn = document.createElement("button");
     soundBtn.id = "soundToggleBtn";
     soundBtn.className = "btn-header-sound";
-    soundBtn.onclick = toggleSound;
+    soundBtn.onclick = toggleNotifModal;
 
     // Logout Button
     const logoutBtn = document.createElement("button");
