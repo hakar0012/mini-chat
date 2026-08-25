@@ -714,12 +714,10 @@
           return;
         }
 
-        // 4. Instagram Posts & Reels (kkinstagram Discord Fix Live Player)
-        const igMatch = part.match(/instagram\.com\/(p|reel|tv|reels)\/([a-zA-Z0-9_-]+)/i);
+        // 4. Instagram Posts & Reels
+        const igMatch = part.match(/instagram\.com\/(?:p|reel|tv|reels)\/([a-zA-Z0-9_-]+)/i);
         if (igMatch) {
-          const type = igMatch[1];
-          const postId = igMatch[2];
-          const kkUrl = `https://www.kkinstagram.com/${type}/${postId}`;
+          const postId = igMatch[1];
           const embedBox = document.createElement("div");
           embedBox.className = "embed-container";
           embedBox.innerHTML = `
@@ -727,15 +725,13 @@
               <div class="embed-link-title"><span>📷</span> Instagram</div>
               <a href="${escapeHtml(part)}" class="embed-link-url" target="_blank" rel="noopener noreferrer">${escapeHtml(part)}</a>
             </div>
-            <div class="embed-kk-wrapper">
-              <iframe class="embed-kkinstagram-wrapper" 
-                      src="${kkUrl}" 
-                      frameborder="0" 
-                      scrolling="no" 
-                      allow="autoplay; encrypted-media; picture-in-picture; clipboard-write; web-share" 
-                      allowfullscreen 
-                      loading="lazy"></iframe>
-            </div>
+            <iframe class="embed-instagram-wrapper" 
+                    src="https://www.instagram.com/p/${postId}/embed/" 
+                    frameborder="0" 
+                    scrolling="no" 
+                    allowtransparency="true" 
+                    allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" 
+                    loading="lazy"></iframe>
           `;
           fragment.appendChild(embedBox);
           return;
