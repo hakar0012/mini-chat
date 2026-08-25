@@ -52,6 +52,7 @@
   let mentionSelectedIndex = 0;
   let currentMentionMatches = [];
   let unreadCount = 0;
+  let pollVotesCache = {};
 
   // =======================================================
   // AUDIO CHIMES & BROWSER NOTIFICATIONS PREFERENCES
@@ -637,78 +638,10 @@
 
     // Render Poll Component if message has a poll
     if (data.isPoll && data.poll) {
-      const poll = data.poll;
-      const pollBox = document.createElement("div");
-      pollBox.className = "poll-container";
-
-      const pollHeader = document.createElement("div");
-      pollHeader.className = "poll-question";
-      pollHeader.innerHTML = `<span>📊</span> <span>${escapeHtml(poll.question || "Poll")}</span>`;
-      pollBox.appendChild(pollHeader);
-
-      const optionsBox = document.createElement("div");
-      optionsBox.className = "poll-options";
-
-      const votes = poll.votes || {};
-      const options = poll.options || [];
-      let totalVotes = 0;
-
-      // Calculate total votes
-      options.forEach((_, idx) => {
-        const optVotes = votes[idx] || {};
-        totalVotes += Object.keys(optVotes).length;
-      });
-
-      options.forEach((optText, idx) => {
-        const optVotes = votes[idx] || {};
-        const count = Object.keys(optVotes).length;
-        const percent = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
-        const hasVotedThis = optVotes[myUid] === true;
-
-        const optBtn = document.createElement("div");
-        optBtn.className = "poll-option-btn" + (hasVotedThis ? " voted" : "");
-        optBtn.onclick = (e) => {
-          e.stopPropagation();
-          togglePollVote(msgId, idx);
-        };
-
-        const fillEl = document.createElement("div");
-        fillEl.className = "poll-option-fill";
-        fillEl.style.width = percent + "%";
-        optBtn.appendChild(fillEl);
-
-        const contentEl = document.createElement("div");
-        contentEl.className = "poll-option-content";
-
-        const labelEl = document.createElement("div");
-        labelEl.className = "poll-option-label";
-        if (hasVotedThis) {
-          labelEl.innerHTML = `<span class="poll-option-check">✓</span> <span>${escapeHtml(optText)}</span>`;
-        } else {
-          labelEl.innerHTML = `<span>${escapeHtml(optText)}</span>`;
-        }
-
-        const statsEl = document.createElement("div");
-        statsEl.className = "poll-option-stats";
-        statsEl.textContent = `${count} (${percent}%)`;
-
-        contentEl.appendChild(labelEl);
-        contentEl.appendChild(statsEl);
-        optBtn.appendChild(contentEl);
-        optionsBox.appendChild(optBtn);
-      });
-
-      pollBox.appendChild(optionsBox);
-
-      const pollFooter = document.createElement("div");
-      pollFooter.className = "poll-footer";
-      pollFooter.innerHTML = `
-        <span>${totalVotes} total vote${totalVotes === 1 ? '' : 's'}</span>
-        <span>Click option to vote</span>
-      `;
-      pollBox.appendChild(pollFooter);
-
-      body.appendChild(pollBox);
+      const pollWrapper = document.createElement("div");
+      pollWrapper.className = "poll-wrapper";
+      pollWrapper.appendChild(buildPollDOM(data.poll, msgId));
+      body.appendChild(pollWrapper);
     }
 
     msgBox.appendChild(meta);
@@ -1479,27 +1412,129 @@
   // =======================================================
   // POLL SYSTEM (VOTING & CREATION)
   // =======================================================
+  function buildPollDOM(poll, msgId) {
+    const pollBox = document.createElement("div");
+    pollBox.className = "poll-container";
+
+    const pollHeader = document.createElement("div");
+    pollHeader.className = "poll-question";
+    pollHeader.innerHTML = `<span>📊</span> <span>${escapeHtml(poll.question || "Poll")}</span>`;
+    pollBox.appendChild(pollHeader);
+
+    const optionsBox = document.createElement("div");
+    optionsBox.className = "poll-options";
+
+    const votes = (pollVotesCache && pollVotesCache[msgId]) || {};
+    const options = poll.options || [];
+
+    // Count votes per option
+    const counts = new Array(options.length).fill(0);
+    let totalVotes = 0;
+    let myVotedIndex = -1;
+
+    Object.keys(votes).forEach(uid => {
+      const optIdx = votes[uid];
+      if (typeof optIdx === 'number' && optIdx >= 0 && optIdx < options.length) {
+        counts[optIdx]++;
+        totalVotes++;
+        if (uid === myUid) myVotedIndex = optIdx;
+      }
+    });
+
+    options.forEach((optText, idx) => {
+      const count = counts[idx];
+      const percent = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
+      const hasVotedThis = (myVotedIndex === idx);
+
+      const optBtn = document.createElement("div");
+      optBtn.className = "poll-option-btn" + (hasVotedThis ? " voted" : "");
+      optBtn.onclick = (e) => {
+        e.stopPropagation();
+        togglePollVote(msgId, idx);
+      };
+
+      const fillEl = document.createElement("div");
+      fillEl.className = "poll-option-fill";
+      fillEl.style.width = percent + "%";
+      optBtn.appendChild(fillEl);
+
+      const contentEl = document.createElement("div");
+      contentEl.className = "poll-option-content";
+
+      const labelEl = document.createElement("div");
+      labelEl.className = "poll-option-label";
+      if (hasVotedThis) {
+        labelEl.innerHTML = `<span class="poll-option-check">✓</span> <span>${escapeHtml(optText)}</span>`;
+      } else {
+        labelEl.innerHTML = `<span>${escapeHtml(optText)}</span>`;
+      }
+
+      const statsEl = document.createElement("div");
+      statsEl.className = "poll-option-stats";
+      statsEl.textContent = `${count} (${percent}%)`;
+
+      contentEl.appendChild(labelEl);
+      contentEl.appendChild(statsEl);
+      optBtn.appendChild(contentEl);
+      optionsBox.appendChild(optBtn);
+    });
+
+    pollBox.appendChild(optionsBox);
+
+    const pollFooter = document.createElement("div");
+    pollFooter.className = "poll-footer";
+    pollFooter.innerHTML = `
+      <span>${totalVotes} total vote${totalVotes === 1 ? '' : 's'}</span>
+      <span>${myVotedIndex >= 0 ? 'Tap to change vote' : 'Tap option to vote'}</span>
+    `;
+    pollBox.appendChild(pollFooter);
+
+    return pollBox;
+  }
+
+  function updateAllPollUIs() {
+    Object.keys(messagesCache).forEach(msgId => {
+      const data = messagesCache[msgId];
+      if (data && data.isPoll && data.poll) {
+        const rowEl = document.getElementById("msg-" + msgId);
+        if (rowEl) {
+          const wrapper = rowEl.querySelector(".poll-wrapper");
+          if (wrapper) {
+            wrapper.innerHTML = "";
+            wrapper.appendChild(buildPollDOM(data.poll, msgId));
+          }
+        }
+      }
+    });
+  }
+
   window.togglePollVote = async function(msgId, optionIndex) {
-    if (!myUid) return;
+    if (!myUid) {
+      alert("Please sign in to vote.");
+      return;
+    }
     const msg = messagesCache[msgId];
     if (!msg || !msg.poll) return;
 
-    const currentVotes = msg.poll.votes || {};
-    const hasVotedThis = currentVotes[optionIndex] && currentVotes[optionIndex][myUid];
+    if (!pollVotesCache[msgId]) pollVotesCache[msgId] = {};
+    const hasVotedThis = (pollVotesCache[msgId][myUid] === optionIndex);
 
-    // Remove vote from all options in this poll first
-    const updates = {};
-    (msg.poll.options || []).forEach((_, idx) => {
-      updates[`rooms/${room}/messages/${msgId}/poll/votes/${idx}/${myUid}`] = null;
-    });
-
-    // If wasn't already voted, add vote to this option
-    if (!hasVotedThis) {
-      updates[`rooms/${room}/messages/${msgId}/poll/votes/${optionIndex}/${myUid}`] = true;
+    // Optimistic local update
+    if (hasVotedThis) {
+      delete pollVotesCache[msgId][myUid];
+    } else {
+      pollVotesCache[msgId][myUid] = optionIndex;
     }
+    updateAllPollUIs();
 
+    // Firebase Realtime update
     try {
-      await db.ref().update(updates);
+      const voteRef = db.ref(`rooms/${room}/pollVotes/${msgId}/${myUid}`);
+      if (hasVotedThis) {
+        await voteRef.remove();
+      } else {
+        await voteRef.set(optionIndex);
+      }
     } catch (err) {
       console.warn("Poll vote error:", err);
     }
@@ -1762,6 +1797,12 @@
           container.appendChild(pill);
         });
       });
+    });
+
+    // Poll Votes Real-time Listener
+    db.ref(`rooms/${room}/pollVotes`).on('value', (snap) => {
+      pollVotesCache = snap.val() || {};
+      updateAllPollUIs();
     });
 
     // Profile Load & Header Setup
