@@ -7,8 +7,8 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Mini Group Chat</title>
-  <link rel="stylesheet" href="css/base.css?v=8" />
-  <link rel="stylesheet" href="css/chat.css?v=8" />
+  <link rel="stylesheet" href="css/base.css?v=9" />
+  <link rel="stylesheet" href="css/chat.css?v=9" />
 </head>
 <body class="chat-page">
   <!-- Header Bar (Full Width) -->
@@ -40,9 +40,16 @@
         </div>
       </div>
 
-      <input type="text" id="textInput" placeholder="Type a message..." maxlength="1000" autocomplete="off" />
+      <div style="position: relative; flex: 1; display: flex; align-items: center;">
+        <input type="text" id="textInput" placeholder="Type a message..." maxlength="1000" autocomplete="off" />
+        <button type="button" id="emojiBtn" class="btn-emoji-trigger" title="Insert Emoji">😊</button>
+      </div>
+
       <button id="sendBtn" type="submit">Send</button>
     </form>
+
+    <!-- Built-in Emoji Picker Popup -->
+    <div id="emojiPickerPopup" class="emoji-picker-popup hidden"></div>
 
     <!-- @mention Autocomplete Dropdown -->
     <div id="mentionPopup" class="mention-popup hidden"></div>
@@ -151,7 +158,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 
   <!-- App Scripts -->
-  <script src="js/firebase-init.js?v=8"></script>
-  <script src="js/chat.js?v=8"></script>
+  <script src="js/firebase-init.js?v=9"></script>
+  <script src="js/chat.js?v=9"></script>
 </body>
 </html>

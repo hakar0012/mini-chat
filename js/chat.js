@@ -30,6 +30,8 @@
   const mentionPopup = document.getElementById("mentionPopup");
   const jumpBottomBtn = document.getElementById("jumpBottomBtn");
   const jumpBottomText = document.getElementById("jumpBottomText");
+  const emojiBtn = document.getElementById("emojiBtn");
+  const emojiPickerPopup = document.getElementById("emojiPickerPopup");
 
   // --- State Variables ---
   let myName = "", myUid = "", myAvatarType = "", myAvatarValue = "";
@@ -472,11 +474,12 @@
       return match;
     });
 
-    // Markdown: `code`, *bold*, _italic_, ~~strike~~
+    // Markdown: `code`, *bold*, _italic_, ~~strike~~, ||spoiler||
     safeText = safeText.replace(/`([^`]+)`/g, '<code>$1</code>');
     safeText = safeText.replace(/\*([^*]+)\*/g, '<strong>$1</strong>');
     safeText = safeText.replace(/_([^_]+)_/g, '<em>$1</em>');
     safeText = safeText.replace(/~~([^~]+)~~/g, '<del>$1</del>');
+    safeText = safeText.replace(/\|\|([^|]+)\|\|/g, '<span class="spoiler" onclick="this.classList.toggle(\'revealed\')">$1</span>');
 
     return safeText;
   }
@@ -1112,14 +1115,170 @@
   };
 
   // =======================================================
-  // CHAT FORM SUBMIT
+  // BUILT-IN EMOJI PICKER
+  // =======================================================
+  const EMOJI_CATEGORIES = {
+    smileys: {
+      icon: '😀',
+      name: 'Smileys',
+      emojis: ['😀','😃','😄','😁','😆','😅','😂','🤣','😊','😇','🙂','🙃','😉','😍','🥰','😘','😋','😛','😜','🤪','😎','🥳','😏','😒','😞','🥺','😢','😭','😤','😠','😡','🤯','😳','🥵','🥶','😱','😨','🤔','🤗','🤫','🤐','😴','🤮','🤡','💩','👻','💀','👽','🤖']
+    },
+    hands: {
+      icon: '👍',
+      name: 'Gestures',
+      emojis: ['👍','👎','👏','🙌','👐','🤝','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','👇','☝️','✋','🤚','🖐️','🖖','👋','💪','🖕','✍️','🙏','💅','🫂','👀','🧠','🫀','👑']
+    },
+    hearts: {
+      icon: '❤️',
+      name: 'Hearts & Vibes',
+      emojis: ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❤️‍🔥','💕','💖','💗','💘','💝','✨','🌟','⭐','🔥','💥','💯','💢','🎉','🎊','🎈','🚀','💎','🌈','⚡','🍀']
+    },
+    fun: {
+      icon: '🍕',
+      name: 'Food & Fun',
+      emojis: ['🍕','🍔','🍟','🌭','🍿','🥞','🧇','🥓','🥩','🍗','🍩','🍪','🎂','🍫','🍬','🍭','🍺','🍻','🥂','🍷','🥃','🍸','🍹','☕','🍵','🥤','🎮','🎲','🎯','🏆','🥇','⚽','🏀','🎸','🎵','🎶']
+    }
+  };
+
+  let activeEmojiTab = 'smileys';
+
+  function initEmojiPicker() {
+    if (!emojiBtn || !emojiPickerPopup) return;
+
+    emojiBtn.onclick = (e) => {
+      e.stopPropagation();
+      toggleEmojiPicker();
+    };
+
+    document.addEventListener("click", (e) => {
+      if (emojiPickerPopup && !emojiPickerPopup.contains(e.target) && e.target !== emojiBtn) {
+        closeEmojiPicker();
+      }
+    });
+  }
+
+  function toggleEmojiPicker() {
+    const isHidden = emojiPickerPopup.classList.toggle("hidden");
+    if (!isHidden) {
+      renderEmojiPicker();
+    }
+  }
+
+  function closeEmojiPicker() {
+    if (emojiPickerPopup) emojiPickerPopup.classList.add("hidden");
+  }
+
+  function renderEmojiPicker(searchQuery = "") {
+    emojiPickerPopup.innerHTML = "";
+
+    // Header with search
+    const headerEl = document.createElement("div");
+    headerEl.className = "emoji-picker-header";
+    const searchInput = document.createElement("input");
+    searchInput.type = "text";
+    searchInput.className = "emoji-search-input";
+    searchInput.placeholder = "Search emoji...";
+    searchInput.value = searchQuery;
+    searchInput.oninput = (e) => renderEmojiPicker(e.target.value.trim().toLowerCase());
+    headerEl.appendChild(searchInput);
+    emojiPickerPopup.appendChild(headerEl);
+
+    // Tabs
+    const tabsEl = document.createElement("div");
+    tabsEl.className = "emoji-picker-tabs";
+    Object.keys(EMOJI_CATEGORIES).forEach(catKey => {
+      const tab = document.createElement("div");
+      tab.className = "emoji-tab" + (catKey === activeEmojiTab && !searchQuery ? " active" : "");
+      tab.textContent = EMOJI_CATEGORIES[catKey].icon;
+      tab.title = EMOJI_CATEGORIES[catKey].name;
+      tab.onclick = (e) => {
+        e.stopPropagation();
+        activeEmojiTab = catKey;
+        renderEmojiPicker();
+      };
+      tabsEl.appendChild(tab);
+    });
+    emojiPickerPopup.appendChild(tabsEl);
+
+    // Grid
+    const gridEl = document.createElement("div");
+    gridEl.className = "emoji-picker-grid";
+
+    let emojisToShow = [];
+    if (searchQuery) {
+      Object.values(EMOJI_CATEGORIES).forEach(cat => {
+        emojisToShow = emojisToShow.concat(cat.emojis);
+      });
+      emojisToShow = [...new Set(emojisToShow)];
+    } else {
+      emojisToShow = EMOJI_CATEGORIES[activeEmojiTab].emojis;
+    }
+
+    emojisToShow.forEach(emoji => {
+      const item = document.createElement("div");
+      item.className = "emoji-item";
+      item.textContent = emoji;
+      item.onclick = (e) => {
+        e.stopPropagation();
+        insertEmoji(emoji);
+      };
+      gridEl.appendChild(item);
+    });
+
+    emojiPickerPopup.appendChild(gridEl);
+    if (!searchQuery) {
+      setTimeout(() => searchInput.focus(), 20);
+    }
+  }
+
+  function insertEmoji(emoji) {
+    const val = textInput.value;
+    const start = textInput.selectionStart || 0;
+    const end = textInput.selectionEnd || 0;
+    textInput.value = val.slice(0, start) + emoji + val.slice(end);
+    const newPos = start + emoji.length;
+    textInput.selectionStart = newPos;
+    textInput.selectionEnd = newPos;
+    textInput.focus();
+  }
+
+  // =======================================================
+  // CHAT FORM SUBMIT & SLASH COMMANDS
   // =======================================================
   chatForm.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const text = textInput.value.trim();
+    let text = textInput.value.trim();
     stopTyping();
     closeMentionPopup();
+    closeEmojiPicker();
     if (!text) return;
+
+    // Handle Slash Commands
+    if (text.startsWith('/') && !editingId) {
+      const parts = text.slice(1).trim().split(/\s+/);
+      const cmd = parts[0].toLowerCase();
+      const arg = parts.slice(1).join(' ');
+
+      if (cmd === 'shrug') {
+        text = (arg ? arg + ' ' : '') + '¯\\_(ツ)_/¯';
+      } else if (cmd === 'tableflip') {
+        text = (arg ? arg + ' ' : '') + '(╯°□°)╯︵ ┻━┻';
+      } else if (cmd === 'unflip') {
+        text = (arg ? arg + ' ' : '') + '┬─┬ノ( º _ ºノ)';
+      } else if (cmd === 'flip') {
+        const side = Math.random() < 0.5 ? 'Heads' : 'Tails';
+        text = `🪙 Flipped a coin: **${side}**!`;
+      } else if (cmd === 'roll') {
+        const max = parseInt(arg, 10) || 6;
+        const result = Math.floor(Math.random() * max) + 1;
+        text = `🎲 Rolled a **${result}** (1-${max})`;
+      } else if (cmd === 'help') {
+        alert("✨ Slash Commands:\n/shrug [text] - Post a shrug\n/tableflip [text] - Flip a table\n/unflip [text] - Put table back\n/flip - Flip a coin (Heads/Tails)\n/roll [max] - Roll dice (e.g. /roll 20)");
+        textInput.value = "";
+        return;
+      }
+    }
+
     sendBtn.disabled = true;
 
     try {
@@ -1298,8 +1457,9 @@
     chatForm.classList.remove("hidden");
     textInput.focus();
 
-    // Initialize @mention Autocomplete
+    // Initialize @mention Autocomplete & Emoji Picker
     initMentionSystem();
+    initEmojiPicker();
 
     // Check empty state initially
     checkEmptyState();
