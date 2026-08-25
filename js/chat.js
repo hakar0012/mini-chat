@@ -645,9 +645,142 @@
     parts.forEach(part => {
       if (/^https?:\/\/[^\s]+$/i.test(part)) {
         const lowerPart = part.toLowerCase();
-        const isImage = /\.(jpe?g|png|gif|webp|bmp|svg)(\?.*)?$/.test(lowerPart);
-        const isVideo = /\.(mp4|webm|ogg|mov)(\?.*)?$/.test(lowerPart);
 
+        // 1. YouTube & YouTube Shorts
+        const ytMatch = part.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i);
+        if (ytMatch) {
+          const videoId = ytMatch[1];
+          const embedBox = document.createElement("div");
+          embedBox.className = "embed-container";
+          embedBox.innerHTML = `
+            <div class="embed-link-header">
+              <span>▶️ YouTube</span>
+              <a href="${escapeHtml(part)}" target="_blank" rel="noopener noreferrer">${escapeHtml(part)}</a>
+            </div>
+            <div class="embed-youtube-wrapper">
+              <iframe src="https://www.youtube-nocookie.com/embed/${videoId}" 
+                      title="YouTube video" 
+                      frameborder="0" 
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                      allowfullscreen 
+                      loading="lazy"></iframe>
+            </div>
+          `;
+          fragment.appendChild(embedBox);
+          return;
+        }
+
+        // 2. TikTok Videos (Discord Fix / Embed Player)
+        const ttMatch = part.match(/tiktok\.com\/(?:@[^/]+\/video\/|v\/|embed\/v2\/)?(\d{10,30})/i);
+        if (ttMatch) {
+          const videoId = ttMatch[1];
+          const embedBox = document.createElement("div");
+          embedBox.className = "embed-container";
+          embedBox.innerHTML = `
+            <div class="embed-link-header">
+              <span>🎵 TikTok</span>
+              <a href="${escapeHtml(part)}" target="_blank" rel="noopener noreferrer">${escapeHtml(part)}</a>
+            </div>
+            <iframe class="embed-tiktok-wrapper" 
+                    src="https://www.tiktok.com/embed/v2/${videoId}" 
+                    allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" 
+                    allowfullscreen 
+                    loading="lazy"></iframe>
+          `;
+          fragment.appendChild(embedBox);
+          return;
+        }
+
+        // 3. Facebook Videos & Reels
+        const fbMatch = part.match(/facebook\.com\/(?:watch\/\?v=|reel\/|[^/]+\/videos\/)(\d+)|fb\.watch\/([a-zA-Z0-9_-]+)/i);
+        if (fbMatch) {
+          const embedBox = document.createElement("div");
+          embedBox.className = "embed-container";
+          const encodedHref = encodeURIComponent(part);
+          embedBox.innerHTML = `
+            <div class="embed-link-header">
+              <span>📹 Facebook Video</span>
+              <a href="${escapeHtml(part)}" target="_blank" rel="noopener noreferrer">${escapeHtml(part)}</a>
+            </div>
+            <iframe class="embed-facebook-wrapper" 
+                    src="https://www.facebook.com/plugins/video.php?href=${encodedHref}&show_text=0&width=320" 
+                    scrolling="no" 
+                    frameborder="0" 
+                    allowfullscreen="true" 
+                    allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" 
+                    loading="lazy"></iframe>
+          `;
+          fragment.appendChild(embedBox);
+          return;
+        }
+
+        // 4. Instagram Posts & Reels
+        const igMatch = part.match(/instagram\.com\/(?:p|reel|tv)\/([a-zA-Z0-9_-]+)/i);
+        if (igMatch) {
+          const postId = igMatch[1];
+          const embedBox = document.createElement("div");
+          embedBox.className = "embed-container";
+          embedBox.innerHTML = `
+            <div class="embed-link-header">
+              <span>📷 Instagram</span>
+              <a href="${escapeHtml(part)}" target="_blank" rel="noopener noreferrer">${escapeHtml(part)}</a>
+            </div>
+            <iframe class="embed-instagram-wrapper" 
+                    src="https://www.instagram.com/p/${postId}/embed" 
+                    frameborder="0" 
+                    scrolling="no" 
+                    allowtransparency="true" 
+                    loading="lazy"></iframe>
+          `;
+          fragment.appendChild(embedBox);
+          return;
+        }
+
+        // 5. Spotify (Tracks, Albums, Playlists)
+        const spMatch = part.match(/open\.spotify\.com\/(track|album|playlist|episode)\/([a-zA-Z0-9]+)/i);
+        if (spMatch) {
+          const type = spMatch[1];
+          const id = spMatch[2];
+          const embedBox = document.createElement("div");
+          embedBox.className = "embed-container";
+          embedBox.innerHTML = `
+            <div class="embed-link-header">
+              <span>🎧 Spotify</span>
+              <a href="${escapeHtml(part)}" target="_blank" rel="noopener noreferrer">${escapeHtml(part)}</a>
+            </div>
+            <iframe class="embed-spotify-wrapper" 
+                    src="https://open.spotify.com/embed/${type}/${id}?theme=0" 
+                    frameborder="0" 
+                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
+                    loading="lazy"></iframe>
+          `;
+          fragment.appendChild(embedBox);
+          return;
+        }
+
+        // 6. Direct Audio Files (.mp3, .wav, .ogg, .m4a)
+        const isAudio = /\.(mp3|wav|ogg|m4a|aac)(\?.*)?$/.test(lowerPart);
+        if (isAudio) {
+          const container = document.createElement("div");
+          container.style.marginTop = "4px";
+          const audio = document.createElement("audio");
+          audio.src = part;
+          audio.controls = true;
+          audio.className = "embed-audio-player";
+          audio.onerror = () => {
+            container.innerHTML = "";
+            const a = document.createElement("a");
+            a.href = part; a.target = "_blank"; a.rel = "noopener noreferrer";
+            a.textContent = part; a.style.cssText = "color:#818cf8;word-break:break-all;text-decoration:underline;";
+            container.appendChild(a);
+          };
+          container.appendChild(audio);
+          fragment.appendChild(container);
+          return;
+        }
+
+        // 7. Direct Images (.jpg, .png, .gif, .webp, .svg)
+        const isImage = /\.(jpe?g|png|gif|webp|bmp|svg)(\?.*)?$/.test(lowerPart);
         if (isImage) {
           const container = document.createElement("div");
           container.style.marginTop = "4px";
@@ -665,7 +798,12 @@
           };
           container.appendChild(img);
           fragment.appendChild(container);
-        } else if (isVideo) {
+          return;
+        }
+
+        // 8. Direct Videos (.mp4, .webm, .mov)
+        const isVideo = /\.(mp4|webm|ogg|mov)(\?.*)?$/.test(lowerPart);
+        if (isVideo) {
           const container = document.createElement("div");
           container.style.marginTop = "4px";
           const video = document.createElement("video");
@@ -681,19 +819,25 @@
           };
           container.appendChild(video);
           fragment.appendChild(container);
-        } else {
-          const a = document.createElement("a");
-          a.href = part; a.target = "_blank"; a.rel = "noopener noreferrer";
-          a.textContent = part;
-          a.style.cssText = "color:#a5b4fc;text-decoration:underline;word-break:break-all;";
-          fragment.appendChild(a);
+          return;
         }
+
+        // 9. Standard Hyperlink fallback
+        const a = document.createElement("a");
+        a.href = part;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        a.textContent = part;
+        a.style.cssText = "color:#a5b4fc;text-decoration:underline;word-break:break-all;";
+        fragment.appendChild(a);
+
       } else if (part.length > 0) {
         const span = document.createElement('span');
         span.innerHTML = parseMarkdownAndMentions(part);
         fragment.appendChild(span);
       }
     });
+
     return fragment;
   }
 
