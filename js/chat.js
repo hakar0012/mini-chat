@@ -654,8 +654,8 @@
           embedBox.className = "embed-container";
           embedBox.innerHTML = `
             <div class="embed-link-header">
-              <span>▶️ YouTube</span>
-              <a href="${escapeHtml(part)}" target="_blank" rel="noopener noreferrer">${escapeHtml(part)}</a>
+              <div class="embed-link-title"><span>▶️</span> YouTube</div>
+              <a href="${escapeHtml(part)}" class="embed-link-url" target="_blank" rel="noopener noreferrer">${escapeHtml(part)}</a>
             </div>
             <div class="embed-youtube-wrapper">
               <iframe src="https://www.youtube-nocookie.com/embed/${videoId}" 
@@ -678,8 +678,8 @@
           embedBox.className = "embed-container";
           embedBox.innerHTML = `
             <div class="embed-link-header">
-              <span>🎵 TikTok</span>
-              <a href="${escapeHtml(part)}" target="_blank" rel="noopener noreferrer">${escapeHtml(part)}</a>
+              <div class="embed-link-title"><span>🎵</span> TikTok</div>
+              <a href="${escapeHtml(part)}" class="embed-link-url" target="_blank" rel="noopener noreferrer">${escapeHtml(part)}</a>
             </div>
             <iframe class="embed-tiktok-wrapper" 
                     src="https://www.tiktok.com/embed/v2/${videoId}" 
@@ -699,11 +699,11 @@
           const encodedHref = encodeURIComponent(part);
           embedBox.innerHTML = `
             <div class="embed-link-header">
-              <span>📹 Facebook Video</span>
-              <a href="${escapeHtml(part)}" target="_blank" rel="noopener noreferrer">${escapeHtml(part)}</a>
+              <div class="embed-link-title"><span>📹</span> Facebook</div>
+              <a href="${escapeHtml(part)}" class="embed-link-url" target="_blank" rel="noopener noreferrer">${escapeHtml(part)}</a>
             </div>
             <iframe class="embed-facebook-wrapper" 
-                    src="https://www.facebook.com/plugins/video.php?href=${encodedHref}&show_text=0&width=320" 
+                    src="https://www.facebook.com/plugins/video.php?href=${encodedHref}&show_text=0&width=340" 
                     scrolling="no" 
                     frameborder="0" 
                     allowfullscreen="true" 
@@ -715,22 +715,23 @@
         }
 
         // 4. Instagram Posts & Reels
-        const igMatch = part.match(/instagram\.com\/(?:p|reel|tv)\/([a-zA-Z0-9_-]+)/i);
+        const igMatch = part.match(/instagram\.com\/(?:p|reel|tv|reels)\/([a-zA-Z0-9_-]+)/i);
         if (igMatch) {
-          const postId = igMatch[1];
           const embedBox = document.createElement("div");
           embedBox.className = "embed-container";
           embedBox.innerHTML = `
             <div class="embed-link-header">
-              <span>📷 Instagram</span>
-              <a href="${escapeHtml(part)}" target="_blank" rel="noopener noreferrer">${escapeHtml(part)}</a>
+              <div class="embed-link-title"><span>📷</span> Instagram</div>
+              <a href="${escapeHtml(part)}" class="embed-link-url" target="_blank" rel="noopener noreferrer">${escapeHtml(part)}</a>
             </div>
-            <iframe class="embed-instagram-wrapper" 
-                    src="https://www.instagram.com/p/${postId}/embed" 
-                    frameborder="0" 
-                    scrolling="no" 
-                    allowtransparency="true" 
-                    loading="lazy"></iframe>
+            <div style="background: rgba(0, 0, 0, 0.4); padding: 18px 14px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px;">
+              <div style="font-size: 28px;">📸</div>
+              <div style="font-size: 13.5px; font-weight: 600; color: #fff;">Instagram Post / Reel</div>
+              <div style="font-size: 11.5px; color: var(--text-dim); max-width: 250px;">Tap below to view this media on Instagram</div>
+              <a href="${escapeHtml(part)}" target="_blank" rel="noopener noreferrer" class="embed-open-btn">
+                <span>Open on Instagram</span> ↗
+              </a>
+            </div>
           `;
           fragment.appendChild(embedBox);
           return;
@@ -745,8 +746,8 @@
           embedBox.className = "embed-container";
           embedBox.innerHTML = `
             <div class="embed-link-header">
-              <span>🎧 Spotify</span>
-              <a href="${escapeHtml(part)}" target="_blank" rel="noopener noreferrer">${escapeHtml(part)}</a>
+              <div class="embed-link-title"><span>🎧</span> Spotify</div>
+              <a href="${escapeHtml(part)}" class="embed-link-url" target="_blank" rel="noopener noreferrer">${escapeHtml(part)}</a>
             </div>
             <iframe class="embed-spotify-wrapper" 
                     src="https://open.spotify.com/embed/${type}/${id}?theme=0" 

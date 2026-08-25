@@ -556,34 +556,52 @@ main#messages {
 /* =======================================================
    RICH MEDIA EMBEDS (YouTube, TikTok, FB, IG, Spotify)
    ======================================================= */
+.msg:has(.embed-container) {
+  padding: 6px 8px;
+}
+
 .embed-container {
-  margin-top: 6px;
-  border-radius: var(--radius-md);
+  margin-top: 2px;
+  margin-bottom: 2px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
-  max-width: 360px;
+  max-width: 380px;
   width: 100%;
-  background: rgba(0, 0, 0, 0.28);
-  border: 1px solid var(--border-subtle);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .embed-link-header {
   padding: 5px 8px;
   font-size: 11.5px;
-  background: rgba(255, 255, 255, 0.04);
-  border-bottom: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   color: var(--text-muted);
 }
 
-.embed-link-header a {
+.embed-link-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  color: var(--text-main);
+  font-size: 11.5px;
+}
+
+.embed-link-url {
   color: #818cf8;
   text-decoration: underline;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 11.5px;
+  font-size: 11px;
+  opacity: 0.85;
 }
 
 .embed-youtube-wrapper {
@@ -592,6 +610,7 @@ main#messages {
   padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
   height: 0;
   background: #000;
+  display: block;
 }
 
 .embed-youtube-wrapper iframe {
@@ -601,21 +620,23 @@ main#messages {
   width: 100%;
   height: 100%;
   border: 0;
+  display: block;
 }
 
 .embed-tiktok-wrapper {
   width: 100%;
-  max-width: 330px;
-  height: 520px;
+  max-width: 325px;
+  height: 480px;
   border: 0;
   display: block;
   background: #000;
+  margin: 0 auto;
 }
 
 .embed-facebook-wrapper {
   width: 100%;
-  max-width: 320px;
-  height: 260px;
+  max-width: 340px;
+  aspect-ratio: 16 / 9;
   border: 0;
   display: block;
   background: #000;
@@ -623,11 +644,38 @@ main#messages {
 
 .embed-instagram-wrapper {
   width: 100%;
-  max-width: 340px;
+  max-width: 350px;
   height: 420px;
   border: 0;
   display: block;
-  background: #fff;
+  background: #ffffff;
+}
+
+.embed-card-fallback {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.embed-open-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
+  color: white !important;
+  text-decoration: none !important;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  transition: opacity 0.15s ease;
+  width: fit-content;
+}
+
+.embed-open-btn:hover {
+  opacity: 0.9;
 }
 
 .embed-spotify-wrapper {
