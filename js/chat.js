@@ -329,10 +329,11 @@
         const targetEl = document.getElementById('msg-' + data.replyToId);
         if (targetEl) {
           targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          targetEl.classList.remove('highlight');
-          void targetEl.offsetWidth; // trigger reflow
-          targetEl.classList.add('highlight');
-          setTimeout(() => targetEl.classList.remove('highlight'), 2000);
+          const bubble = targetEl.querySelector('.msg') || targetEl;
+          bubble.classList.remove('highlight');
+          void bubble.offsetWidth; // trigger reflow
+          bubble.classList.add('highlight');
+          setTimeout(() => bubble.classList.remove('highlight'), 1800);
         }
       };
       msgBox.appendChild(rep);

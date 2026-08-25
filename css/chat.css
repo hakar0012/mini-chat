@@ -183,18 +183,23 @@ main#messages {
   position: relative;
   display: flex;
   gap: 8px;
-  max-width: min(85%, 680px);
+  width: fit-content;
+  max-width: min(85%, 650px);
+  align-self: flex-start;
   align-items: flex-end;
   transition: background 0.15s ease;
 }
 
 .msg-row.mine {
+  align-self: flex-end;
   margin-left: auto;
   flex-direction: row-reverse;
 }
 
 /* Cozy Message Bubbles */
 .msg {
+  position: relative;
+  width: fit-content;
   max-width: 100%;
   padding: 8px 13px;
   border-radius: 14px 14px 14px 4px;
@@ -204,7 +209,6 @@ main#messages {
   white-space: pre-wrap;
   word-break: break-word;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
-  position: relative;
   font-size: 14.5px;
   color: var(--text-main);
 }
