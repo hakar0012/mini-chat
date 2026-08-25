@@ -8,40 +8,38 @@
   <link rel="stylesheet" href="css/chat.css" />
 </head>
 <body class="chat-page">
-  <div class="chat-shell">
-    <!-- Header Bar -->
-    <header id="chatHeader"></header>
+  <!-- Header Bar (Full Width) -->
+  <header id="chatHeader"></header>
 
-    <!-- Messages Scroll Area -->
-    <main id="messages" aria-live="polite"></main>
+  <!-- Messages Scroll Area (Full Width) -->
+  <main id="messages" aria-live="polite"></main>
 
-    <!-- Typing Indicator -->
-    <div id="typingIndicator"></div>
+  <!-- Typing Indicator -->
+  <div id="typingIndicator"></div>
 
-    <!-- Composer Section with Docked Reply Bar -->
-    <div class="composer-wrapper">
-      <!-- Reply Preview Bar -->
-      <div id="replyBar">
-        <div class="reply-bar-info" id="replyName"></div>
-        <span class="reply-bar-close" onclick="cancelReply()" title="Cancel reply (Esc)">×</span>
-      </div>
-      
-      <!-- Message Composer Form -->
-      <form id="chatForm" class="hidden">
-        <input type="file" id="imageInput" accept="image/*" style="display: none;" />
-        
-        <div style="position: relative;">
-          <button type="button" id="attachBtn" class="btn-attach" title="Attach image or GIF">+</button>
-          <div id="attachMenu" class="attach-menu hidden">
-            <button type="button" id="attachImageBtn" class="attach-menu-item">🖼️ Upload Image</button>
-            <button type="button" id="attachGifBtn" class="attach-menu-item">🎞️ Search GIFs</button>
-          </div>
-        </div>
-
-        <input type="text" id="textInput" placeholder="Type a message..." maxlength="1000" autocomplete="off" />
-        <button id="sendBtn" type="submit">Send</button>
-      </form>
+  <!-- Composer Section with Docked Reply Bar (Full Width) -->
+  <div class="composer-wrapper">
+    <!-- Reply Preview Bar -->
+    <div id="replyBar">
+      <div class="reply-bar-info" id="replyName"></div>
+      <span class="reply-bar-close" onclick="cancelReply()" title="Cancel reply (Esc)">×</span>
     </div>
+    
+    <!-- Message Composer Form -->
+    <form id="chatForm" class="hidden">
+      <input type="file" id="imageInput" accept="image/*" style="display: none;" />
+      
+      <div style="position: relative;">
+        <button type="button" id="attachBtn" class="btn-attach" title="Attach image or GIF">+</button>
+        <div id="attachMenu" class="attach-menu hidden">
+          <button type="button" id="attachImageBtn" class="attach-menu-item">🖼️ Upload Image</button>
+          <button type="button" id="attachGifBtn" class="attach-menu-item">🎞️ Search GIFs</button>
+        </div>
+      </div>
+
+      <input type="text" id="textInput" placeholder="Type a message..." maxlength="1000" autocomplete="off" />
+      <button id="sendBtn" type="submit">Send</button>
+    </form>
   </div>
 
   <!-- Online Users Modal -->
