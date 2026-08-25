@@ -388,9 +388,9 @@
       toolbar.appendChild(deleteBtn);
     }
 
+    msgBox.appendChild(toolbar);
     row.appendChild(avatar);
     row.appendChild(msgBox);
-    row.appendChild(toolbar);
 
     // Mobile tap support for toolbar
     row.addEventListener('click', (e) => {
