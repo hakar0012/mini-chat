@@ -609,7 +609,7 @@
       rep.className = "reply-preview";
       rep.innerHTML = `
         <div class="reply-preview-name">↩ ${escapeHtml(data.replyToName || "anon")}</div>
-        <div class="reply-preview-text">${escapeHtml(data.replyToText || "")}</div>
+        <div class="reply-preview-text">${parseMarkdownAndMentions(data.replyToText || "")}</div>
       `;
       rep.onclick = (e) => {
         e.stopPropagation();
@@ -901,7 +901,7 @@
     if (!msg) return;
     replyingTo = { id: id, name: msg.name, text: (msg.text || "").substring(0, 50) };
     replyBar.classList.add("active");
-    replyName.innerHTML = `<span>↩ Replying to <strong>@${escapeHtml(msg.name || "anon")}</strong>: "${escapeHtml(replyingTo.text)}"</span>`;
+    replyName.innerHTML = `<span>↩ Replying to <strong>@${escapeHtml(msg.name || "anon")}</strong>: ${parseMarkdownAndMentions(replyingTo.text)}</span>`;
     textInput.focus();
   };
 
@@ -1194,29 +1194,170 @@
   };
 
   // =======================================================
-  // BUILT-IN EMOJI PICKER
+  // BUILT-IN EMOJI PICKER WITH KEYWORD SEARCH
   // =======================================================
+  const EMOJI_DATABASE = [
+    // Smileys
+    { e: '😀', k: 'grinning face happy smile laugh' },
+    { e: '😃', k: 'smiley happy joy laugh' },
+    { e: '😄', k: 'smile happy laugh eyes' },
+    { e: '😁', k: 'beam grin teeth happy' },
+    { e: '😆', k: 'laugh haha lol closed eyes' },
+    { e: '😅', k: 'sweat smile relief cold' },
+    { e: '😂', k: 'joy laugh tears haha lol funny' },
+    { e: '🤣', k: 'rofl rolling on floor laughing lol funny' },
+    { e: '😊', k: 'blush happy smile proud warm' },
+    { e: '😇', k: 'innocent angel halo holy' },
+    { e: '🙂', k: 'slight smile nice' },
+    { e: '🙃', k: 'upside down silly sarcasm' },
+    { e: '😉', k: 'wink flirting joke' },
+    { e: '😍', k: 'heart eyes love admire crush' },
+    { e: '🥰', k: 'in love hearts smiling affectionate' },
+    { e: '😘', k: 'kiss blowing love romance' },
+    { e: '😋', k: 'yum delicious tongue tasty food' },
+    { e: '😛', k: 'tongue silly cheeky' },
+    { e: '😜', k: 'wink tongue crazy goofy' },
+    { e: '🤪', k: 'zany goofy crazy wild' },
+    { e: '😎', k: 'sunglasses cool stylish boss' },
+    { e: '🥳', k: 'party celebrate hat horn birthday' },
+    { e: '😏', k: 'smirk sneaky suggestive' },
+    { e: '😒', k: 'unamused annoyed bored' },
+    { e: '😞', k: 'disappointed sad down' },
+    { e: '🥺', k: 'pleading puppy eyes please cute beg' },
+    { e: '😢', k: 'cry tear sad upset' },
+    { e: '😭', k: 'sob crying tears loud heartbreak' },
+    { e: '😤', k: 'triumph steam proud angry' },
+    { e: '😠', k: 'angry mad grumpy frustrated' },
+    { e: '😡', k: 'rage red mad furious anger' },
+    { e: '🤯', k: 'exploding head mind blown shocked' },
+    { e: '😳', k: 'flushed shocked embarrassed stunned' },
+    { e: '🥵', k: 'hot sweating summer fever spicy' },
+    { e: '🥶', k: 'cold freezing winter frost chill' },
+    { e: '😱', k: 'scream fear shocked horrified omg' },
+    { e: '😨', k: 'fear scared worried' },
+    { e: '🤔', k: 'thinking ponder hmm wonder' },
+    { e: '🤗', k: 'hug embrace warm love' },
+    { e: '🤫', k: 'shh quiet secret silence' },
+    { e: '🤐', k: 'zipper mouth silent secret mute' },
+    { e: '😴', k: 'sleeping tired zzz bedtime' },
+    { e: '🤮', k: 'vomit sick puke gross disgusting' },
+    { e: '🤡', k: 'clown foolish circus silly' },
+    { e: '💩', k: 'poop shit crap funny' },
+    { e: '👻', k: 'ghost spooky halloween boocool' },
+    { e: '💀', k: 'skull dead skeleton laugh died rip' },
+    { e: '👽', k: 'alien ufo extra extraterrestrial' },
+    { e: '🤖', k: 'robot bot tech AI' },
+
+    // Gestures & People
+    { e: '👍', k: 'thumbs up like approve good yes +1' },
+    { e: '👎', k: 'thumbs down dislike bad no -1' },
+    { e: '👏', k: 'clap applause bravo cheering' },
+    { e: '🙌', k: 'raised hands praise celebrate yay' },
+    { e: '👐', k: 'open hands embrace' },
+    { e: '🤝', k: 'handshake deal agree partner business' },
+    { e: '✌️', k: 'peace victory two v' },
+    { e: '🤞', k: 'crossed fingers luck hope wish' },
+    { e: '🤟', k: 'love you gesture ily' },
+    { e: '🤘', k: 'rock on heavy metal horns party' },
+    { e: '🤙', k: 'call me hang loose shaka chill' },
+    { e: '👈', k: 'point left finger' },
+    { e: '👉', k: 'point right finger' },
+    { e: '👆', k: 'point up finger' },
+    { e: '👇', k: 'point down finger' },
+    { e: '☝️', k: 'point up one index' },
+    { e: '✋', k: 'hand raised stop five high' },
+    { e: '🤚', k: 'raised back hand stop' },
+    { e: '🖐️', k: 'five splayed fingers wave' },
+    { e: '🖖', k: 'vulcan spock salute star trek' },
+    { e: '👋', k: 'wave hello goodbye hi bye' },
+    { e: '💪', k: 'muscle flex strong power gym fitness' },
+    { e: '🖕', k: 'middle finger rude angry fu' },
+    { e: '✍️', k: 'writing pen hand write note' },
+    { e: '🙏', k: 'pray please thanks thank you namaste bless' },
+    { e: '💅', k: 'nail polish sassy care fabulous' },
+    { e: '🫂', k: 'people hugging hug friends comfort' },
+    { e: '👀', k: 'eyes look see glance watching peek' },
+    { e: '🧠', k: 'brain smart think mind genius' },
+    { e: '🫀', k: 'heart anatomical organ cardio' },
+    { e: '👑', k: 'crown king queen royal win champion leader' },
+
+    // Hearts & Vibes
+    { e: '❤️', k: 'red heart love passion romantic' },
+    { e: '🧡', k: 'orange heart love' },
+    { e: '💛', k: 'yellow heart friendship' },
+    { e: '💚', k: 'green heart nature' },
+    { e: '💙', k: 'blue heart peace' },
+    { e: '💜', k: 'purple heart purple love' },
+    { e: '🖤', k: 'black heart dark emo' },
+    { e: '🤍', k: 'white heart pure peace' },
+    { e: '🤎', k: 'brown heart' },
+    { e: '💔', k: 'broken heart sad breakup pain' },
+    { e: '❤️‍🔥', k: 'heart on fire passion burning love' },
+    { e: '💕', k: 'two hearts love floating' },
+    { e: '💖', k: 'sparkling heart love shine sparkle' },
+    { e: '💗', k: 'growing heart pulse expand' },
+    { e: '💘', k: 'cupid arrow love struck' },
+    { e: '💝', k: 'gift ribbon heart present' },
+    { e: '✨', k: 'sparkles stars magic shiny sparkle clean aesthetic' },
+    { e: '🌟', k: 'glowing star shine bright gold' },
+    { e: '⭐', k: 'star favorite rate yellow' },
+    { e: '🔥', k: 'fire lit flame hot burn hype' },
+    { e: '💥', k: 'collision boom bang explode blast' },
+    { e: '💯', k: 'hundred percent perfect score 100 real' },
+    { e: '💢', k: 'anger mad symbol comic' },
+    { e: '🎉', k: 'party popper confetti celebrate congratulations' },
+    { e: '🎊', k: 'confetti ball celebration party' },
+    { e: '🎈', k: 'balloon birthday party celebration' },
+    { e: '🚀', k: 'rocket launch moon fast speed boost crypto' },
+    { e: '💎', k: 'gem stone diamond rich shiny luxury' },
+    { e: '🌈', k: 'rainbow pride colors nature sky' },
+    { e: '⚡', k: 'lightning electric thunder fast power shock energy' },
+    { e: '🍀', k: 'clover four leaf lucky luck irish' },
+
+    // Food & Fun & Misc
+    { e: '🍕', k: 'pizza slice cheese food lunch dinner fast food' },
+    { e: '🍔', k: 'burger hamburger fast food beef lunch' },
+    { e: '🍟', k: 'fries french fries snack potato fast food' },
+    { e: '🌭', k: 'hotdog sausage fast food snack' },
+    { e: '🍿', k: 'popcorn movie snack cinema film' },
+    { e: '🥞', k: 'pancakes breakfast sweet syrup' },
+    { e: '🧇', k: 'waffle breakfast sweet' },
+    { e: '🥓', k: 'bacon meat breakfast crispy pork' },
+    { e: '🥩', k: 'steak meat beef dinner steakhouse' },
+    { e: '🍗', k: 'chicken leg drumstick meat poultry' },
+    { e: '🍩', k: 'doughnut donut sweet pastry glaze' },
+    { e: '🍪', k: 'cookie chocolate snack sweet biscuit' },
+    { e: '🎂', k: 'birthday cake sweet celebrate party anniversary' },
+    { e: '🍫', k: 'chocolate bar sweet dessert cocoa' },
+    { e: '🍬', k: 'candy sweet treat sugar' },
+    { e: '🍭', k: 'lollipop candy sweet treat' },
+    { e: '🍺', k: 'beer drink alcohol pub bar mug cold' },
+    { e: '🍻', k: 'cheers beers clinking party toast celebrate' },
+    { e: '🥂', k: 'champagne glasses toast cheers celebrate wedding' },
+    { e: '🍷', k: 'wine glass red alcohol drink dinner' },
+    { e: '🥃', k: 'whiskey bourbon tumbler liquor drink' },
+    { e: '🍸', k: 'cocktail martini drink olive bar' },
+    { e: '🍹', k: 'tropical drink cocktail summer beach' },
+    { e: '☕', k: 'coffee tea warm cup cafe morning espresso' },
+    { e: '🍵', k: 'matcha green tea cup hot' },
+    { e: '🥤', k: 'soda cup with straw drink beverage cola' },
+    { e: '🎮', k: 'game controller gaming play ps xbox video game' },
+    { e: '🎲', k: 'dice game roll luck board game chance' },
+    { e: '🎯', k: 'target dart bullseye goal accurate hit' },
+    { e: '🏆', k: 'trophy champion win first award tournament' },
+    { e: '🥇', k: 'first medal gold winner champion' },
+    { e: '⚽', k: 'soccer football ball sport world cup' },
+    { e: '🏀', k: 'basketball ball sport nba hoop' },
+    { e: '🎸', k: 'guitar rock music instrument acoustic electric' },
+    { e: '🎵', k: 'music note song melody audio tune' },
+    { e: '🎶', k: 'musical notes audio sound songs playlist' }
+  ];
+
   const EMOJI_CATEGORIES = {
-    smileys: {
-      icon: '😀',
-      name: 'Smileys',
-      emojis: ['😀','😃','😄','😁','😆','😅','😂','🤣','😊','😇','🙂','🙃','😉','😍','🥰','😘','😋','😛','😜','🤪','😎','🥳','😏','😒','😞','🥺','😢','😭','😤','😠','😡','🤯','😳','🥵','🥶','😱','😨','🤔','🤗','🤫','🤐','😴','🤮','🤡','💩','👻','💀','👽','🤖']
-    },
-    hands: {
-      icon: '👍',
-      name: 'Gestures',
-      emojis: ['👍','👎','👏','🙌','👐','🤝','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','👇','☝️','✋','🤚','🖐️','🖖','👋','💪','🖕','✍️','🙏','💅','🫂','👀','🧠','🫀','👑']
-    },
-    hearts: {
-      icon: '❤️',
-      name: 'Hearts & Vibes',
-      emojis: ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❤️‍🔥','💕','💖','💗','💘','💝','✨','🌟','⭐','🔥','💥','💯','💢','🎉','🎊','🎈','🚀','💎','🌈','⚡','🍀']
-    },
-    fun: {
-      icon: '🍕',
-      name: 'Food & Fun',
-      emojis: ['🍕','🍔','🍟','🌭','🍿','🥞','🧇','🥓','🥩','🍗','🍩','🍪','🎂','🍫','🍬','🍭','🍺','🍻','🥂','🍷','🥃','🍸','🍹','☕','🍵','🥤','🎮','🎲','🎯','🏆','🥇','⚽','🏀','🎸','🎵','🎶']
-    }
+    smileys: { icon: '😀', name: 'Smileys', start: 0, end: 49 },
+    hands: { icon: '👍', name: 'Gestures', start: 49, end: 79 },
+    hearts: { icon: '❤️', name: 'Hearts', start: 79, end: 110 },
+    fun: { icon: '🍕', name: 'Food & Fun', start: 110, end: EMOJI_DATABASE.length }
   };
 
   let activeEmojiTab = 'smileys';
@@ -1239,7 +1380,7 @@
   function toggleEmojiPicker() {
     const isHidden = emojiPickerPopup.classList.toggle("hidden");
     if (!isHidden) {
-      renderEmojiPicker();
+      buildEmojiPickerDOM();
     }
   }
 
@@ -1247,67 +1388,81 @@
     if (emojiPickerPopup) emojiPickerPopup.classList.add("hidden");
   }
 
-  function renderEmojiPicker(searchQuery = "") {
-    emojiPickerPopup.innerHTML = "";
+  function buildEmojiPickerDOM() {
+    emojiPickerPopup.innerHTML = `
+      <div class="emoji-picker-header">
+        <input type="text" id="emojiSearchInput" class="emoji-search-input" placeholder="Search emojis (e.g. smile, fire, pizza)..." autocomplete="off" />
+      </div>
+      <div class="emoji-picker-tabs" id="emojiPickerTabs"></div>
+      <div class="emoji-picker-grid" id="emojiGrid"></div>
+    `;
 
-    // Header with search
-    const headerEl = document.createElement("div");
-    headerEl.className = "emoji-picker-header";
-    const searchInput = document.createElement("input");
-    searchInput.type = "text";
-    searchInput.className = "emoji-search-input";
-    searchInput.placeholder = "Search emoji...";
-    searchInput.value = searchQuery;
-    searchInput.oninput = (e) => renderEmojiPicker(e.target.value.trim().toLowerCase());
-    headerEl.appendChild(searchInput);
-    emojiPickerPopup.appendChild(headerEl);
-
-    // Tabs
-    const tabsEl = document.createElement("div");
-    tabsEl.className = "emoji-picker-tabs";
+    const tabsEl = document.getElementById("emojiPickerTabs");
     Object.keys(EMOJI_CATEGORIES).forEach(catKey => {
       const tab = document.createElement("div");
-      tab.className = "emoji-tab" + (catKey === activeEmojiTab && !searchQuery ? " active" : "");
+      tab.className = "emoji-tab" + (catKey === activeEmojiTab ? " active" : "");
       tab.textContent = EMOJI_CATEGORIES[catKey].icon;
       tab.title = EMOJI_CATEGORIES[catKey].name;
       tab.onclick = (e) => {
         e.stopPropagation();
         activeEmojiTab = catKey;
-        renderEmojiPicker();
+        const searchInp = document.getElementById("emojiSearchInput");
+        if (searchInp) searchInp.value = "";
+        updateEmojiTabsUI();
+        renderEmojiGrid("");
       };
       tabsEl.appendChild(tab);
     });
-    emojiPickerPopup.appendChild(tabsEl);
 
-    // Grid
-    const gridEl = document.createElement("div");
-    gridEl.className = "emoji-picker-grid";
+    const searchInput = document.getElementById("emojiSearchInput");
+    searchInput.oninput = (e) => {
+      const query = e.target.value.trim().toLowerCase();
+      renderEmojiGrid(query);
+    };
 
-    let emojisToShow = [];
-    if (searchQuery) {
-      Object.values(EMOJI_CATEGORIES).forEach(cat => {
-        emojisToShow = emojisToShow.concat(cat.emojis);
-      });
-      emojisToShow = [...new Set(emojisToShow)];
-    } else {
-      emojisToShow = EMOJI_CATEGORIES[activeEmojiTab].emojis;
-    }
+    renderEmojiGrid("");
+    setTimeout(() => searchInput.focus(), 30);
+  }
 
-    emojisToShow.forEach(emoji => {
-      const item = document.createElement("div");
-      item.className = "emoji-item";
-      item.textContent = emoji;
-      item.onclick = (e) => {
-        e.stopPropagation();
-        insertEmoji(emoji);
-      };
-      gridEl.appendChild(item);
+  function updateEmojiTabsUI() {
+    const tabs = document.querySelectorAll(".emoji-tab");
+    const catKeys = Object.keys(EMOJI_CATEGORIES);
+    tabs.forEach((t, i) => {
+      t.classList.toggle("active", catKeys[i] === activeEmojiTab);
     });
+  }
 
-    emojiPickerPopup.appendChild(gridEl);
-    if (!searchQuery) {
-      setTimeout(() => searchInput.focus(), 20);
+  function renderEmojiGrid(query = "") {
+    const gridEl = document.getElementById("emojiGrid");
+    if (!gridEl) return;
+    gridEl.innerHTML = "";
+
+    let items = [];
+    if (query) {
+      items = EMOJI_DATABASE.filter(item => {
+        return item.k.includes(query) || item.e.includes(query);
+      });
+    } else {
+      const cat = EMOJI_CATEGORIES[activeEmojiTab];
+      items = EMOJI_DATABASE.slice(cat.start, cat.end);
     }
+
+    if (items.length === 0) {
+      gridEl.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: var(--text-dim); padding: 24px 0; font-size: 13px;">No matching emojis</div>';
+      return;
+    }
+
+    items.forEach(item => {
+      const div = document.createElement("div");
+      div.className = "emoji-item";
+      div.textContent = item.e;
+      div.title = item.k.split(' ')[0];
+      div.onclick = (e) => {
+        e.stopPropagation();
+        insertEmoji(item.e);
+      };
+      gridEl.appendChild(div);
+    });
   }
 
   function insertEmoji(emoji) {
