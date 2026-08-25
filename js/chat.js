@@ -1,5 +1,5 @@
 // =======================================================
-// MINI GROUP CHAT - MODERN OVERHAUL APPLICATION LOGIC
+// MINI GROUP CHAT - COMPLETE LOGIC WITH MENTIONS & AUDIO
 // =======================================================
 (function() {
   // --- Third Party API Keys ---
@@ -27,6 +27,7 @@
   const attachImageBtn = document.getElementById("attachImageBtn");
   const attachGifBtn = document.getElementById("attachGifBtn");
   const typingIndicator = document.getElementById("typingIndicator");
+  const mentionPopup = document.getElementById("mentionPopup");
 
   // --- State Variables ---
   let myName = "", myUid = "", myAvatarType = "", myAvatarValue = "";
@@ -42,6 +43,235 @@
   let gifSearchDebounce = null;
   let currentGifQuery = "";
   let gifModal = null;
+  let isInitialLoadDone = false;
+  let mentionSelectedIndex = 0;
+  let currentMentionMatches = [];
+
+  // =======================================================
+  // AUDIO CHIMES & BROWSER NOTIFICATIONS
+  // =======================================================
+  let audioCtx = null;
+  function getAudioContext() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    return audioCtx;
+  }
+
+  function isMuted() {
+    return localStorage.getItem('chat_muted') === 'true';
+  }
+
+  function toggleSound() {
+    const muted = !isMuted();
+    localStorage.setItem('chat_muted', muted ? 'true' : 'false');
+    updateSoundBtn();
+    if (!muted && "Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }
+
+  function updateSoundBtn() {
+    const btn = document.getElementById('soundToggleBtn');
+    if (btn) {
+      const muted = isMuted();
+      btn.innerHTML = muted ? '🔕' : '🔔';
+      btn.title = muted ? 'Unmute notifications & sound' : 'Mute notifications & sound';
+    }
+  }
+
+  function playChime(isMention = false) {
+    if (isMuted()) return;
+    try {
+      const ctx = getAudioContext();
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      if (isMention) {
+        // High priority 3-tone arpeggio (G5, B5, E6)
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(784, now);
+        osc.frequency.setValueAtTime(987, now + 0.08);
+        osc.frequency.setValueAtTime(1318, now + 0.16);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+        osc.start(now);
+        osc.stop(now + 0.45);
+      } else {
+        // Soft marimba pop (D5 -> A5)
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, now);
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.07);
+        gain.gain.setValueAtTime(0.08, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+        osc.start(now);
+        osc.stop(now + 0.22);
+      }
+    } catch (e) {
+      console.warn("Audio chime error:", e);
+    }
+  }
+
+  function sendNotification(title, body) {
+    if (isMuted()) return;
+    if (!("Notification" in window)) return;
+    if (Notification.permission === "granted") {
+      try {
+        const notif = new Notification(title, {
+          body: (body || "").substring(0, 100)
+        });
+        notif.onclick = () => {
+          window.focus();
+          notif.close();
+        };
+      } catch (e) {
+        console.warn("Notification error:", e);
+      }
+    }
+  }
+
+  // =======================================================
+  // @MENTION AUTOCOMPLETE SYSTEM
+  // =======================================================
+  function initMentionSystem() {
+    if (!mentionPopup) return;
+
+    textInput.addEventListener("input", handleMentionInput);
+    textInput.addEventListener("keydown", handleMentionKeydown);
+    document.addEventListener("click", (e) => {
+      if (!mentionPopup.contains(e.target) && e.target !== textInput) {
+        closeMentionPopup();
+      }
+    });
+  }
+
+  function handleMentionInput() {
+    const val = textInput.value;
+    const cursorPos = textInput.selectionStart;
+    const textBeforeCursor = val.slice(0, cursorPos);
+    const match = textBeforeCursor.match(/@([a-zA-Z0-9_]*)$/);
+
+    if (!match) {
+      closeMentionPopup();
+      return;
+    }
+
+    const query = match[1].toLowerCase();
+    
+    // Collect unique users from cache & online users
+    const candidatesMap = {};
+    Object.keys(onlineUsers).forEach(uid => {
+      const p = userProfilesCache[uid];
+      if (p && p.name) candidatesMap[p.name.toLowerCase()] = { ...p, uid: uid };
+    });
+    Object.values(userProfilesCache).forEach(p => {
+      if (p && p.name && !candidatesMap[p.name.toLowerCase()]) {
+        candidatesMap[p.name.toLowerCase()] = p;
+      }
+    });
+
+    const candidates = Object.values(candidatesMap).filter(p => {
+      return p.name && p.name.toLowerCase().startsWith(query);
+    });
+
+    if (candidates.length === 0) {
+      closeMentionPopup();
+      return;
+    }
+
+    currentMentionMatches = candidates;
+    mentionSelectedIndex = 0;
+    renderMentionPopup(match.index, match[0].length);
+  }
+
+  function renderMentionPopup(matchIndex, matchLength) {
+    mentionPopup.innerHTML = "";
+    mentionPopup.classList.remove("hidden");
+
+    currentMentionMatches.forEach((user, idx) => {
+      const isOnline = onlineUsers[user.uid] === true;
+      const div = document.createElement("div");
+      div.className = "mention-item" + (idx === mentionSelectedIndex ? " selected" : "");
+      div.appendChild(createAvatarEl(user.avatarType, user.avatarValue, user.name, user.uid));
+
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "mention-item-name";
+      nameSpan.textContent = "@" + user.name;
+      div.appendChild(nameSpan);
+
+      if (isOnline) {
+        const statusSpan = document.createElement("span");
+        statusSpan.className = "mention-item-status";
+        statusSpan.textContent = "● online";
+        div.appendChild(statusSpan);
+      }
+
+      div.onmousedown = (e) => {
+        e.preventDefault();
+        insertMention(user.name, matchIndex, matchLength);
+      };
+
+      mentionPopup.appendChild(div);
+    });
+  }
+
+  function handleMentionKeydown(e) {
+    if (mentionPopup.classList.contains("hidden")) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      mentionSelectedIndex = (mentionSelectedIndex + 1) % currentMentionMatches.length;
+      updateMentionSelection();
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      mentionSelectedIndex = (mentionSelectedIndex - 1 + currentMentionMatches.length) % currentMentionMatches.length;
+      updateMentionSelection();
+    } else if (e.key === "Enter" || e.key === "Tab") {
+      if (currentMentionMatches[mentionSelectedIndex]) {
+        e.preventDefault();
+        const val = textInput.value;
+        const cursorPos = textInput.selectionStart;
+        const textBeforeCursor = val.slice(0, cursorPos);
+        const match = textBeforeCursor.match(/@([a-zA-Z0-9_]*)$/);
+        if (match) {
+          insertMention(currentMentionMatches[mentionSelectedIndex].name, match.index, match[0].length);
+        }
+      }
+    } else if (e.key === "Escape") {
+      closeMentionPopup();
+    }
+  }
+
+  function updateMentionSelection() {
+    const items = mentionPopup.querySelectorAll(".mention-item");
+    items.forEach((it, idx) => {
+      it.classList.toggle("selected", idx === mentionSelectedIndex);
+    });
+  }
+
+  function insertMention(username, matchIndex, matchLength) {
+    const val = textInput.value;
+    const before = val.slice(0, matchIndex);
+    const after = val.slice(matchIndex + matchLength);
+    textInput.value = before + "@" + username + " " + after;
+    const newCursor = matchIndex + username.length + 2;
+    textInput.selectionStart = newCursor;
+    textInput.selectionEnd = newCursor;
+    closeMentionPopup();
+    textInput.focus();
+  }
+
+  function closeMentionPopup() {
+    mentionPopup.classList.add("hidden");
+    currentMentionMatches = [];
+    mentionSelectedIndex = 0;
+  }
 
   // =======================================================
   // ROOM SWITCHER DRAWER
@@ -148,20 +378,21 @@
       userProfilesCache[data.uid] = {
         name: data.name,
         avatarType: data.avatarType,
-        avatarValue: data.avatarValue
+        avatarValue: data.avatarValue,
+        uid: data.uid
       };
     }
   }
 
   function createAvatarEl(type, value, name, uid) {
     const el = document.createElement("div");
-    el.style.cssText = "width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;user-select:none;box-shadow:0 2px 5px rgba(0,0,0,0.2);";
+    el.style.cssText = "width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px;flex-shrink:0;user-select:none;box-shadow:0 1px 4px rgba(0,0,0,0.2);";
     if (type === 'preset') {
       el.textContent = value || '👤';
-      el.style.background = '#1e293b';
+      el.style.background = 'var(--bg-card)';
     } else {
       el.textContent = (name || '?').charAt(0).toUpperCase();
-      el.style.background = value || '#2563eb';
+      el.style.background = value || 'var(--primary)';
       el.style.color = '#ffffff';
     }
     return el;
@@ -198,7 +429,7 @@
     return safeText;
   }
 
-  // Image Lightbox Viewer
+  // Lightbox Modal
   function openLightbox(src) {
     const existing = document.querySelector('.lightbox-modal');
     if (existing) existing.remove();
@@ -224,33 +455,33 @@
 
         if (isImage) {
           const container = document.createElement("div");
-          container.style.marginTop = "6px";
+          container.style.marginTop = "4px";
           const img = document.createElement("img");
           img.src = part;
-          img.style.cssText = "max-width:100%;max-height:280px;border-radius:10px;display:block;cursor:zoom-in;box-shadow:0 3px 10px rgba(0,0,0,0.3);";
+          img.style.cssText = "max-width:min(300px, 100%);max-height:260px;border-radius:8px;display:block;cursor:zoom-in;";
           img.loading = "lazy";
           img.onclick = () => openLightbox(img.src);
           img.onerror = () => {
             container.innerHTML = "";
             const a = document.createElement("a");
             a.href = part; a.target = "_blank"; a.rel = "noopener noreferrer";
-            a.textContent = part; a.style.cssText = "color:#60a5fa;word-break:break-all;text-decoration:underline;";
+            a.textContent = part; a.style.cssText = "color:#818cf8;word-break:break-all;text-decoration:underline;";
             container.appendChild(a);
           };
           container.appendChild(img);
           fragment.appendChild(container);
         } else if (isVideo) {
           const container = document.createElement("div");
-          container.style.marginTop = "6px";
+          container.style.marginTop = "4px";
           const video = document.createElement("video");
           video.src = part;
           video.controls = true;
-          video.style.cssText = "max-width:100%;max-height:280px;border-radius:10px;box-shadow:0 3px 10px rgba(0,0,0,0.3);";
+          video.style.cssText = "max-width:min(300px, 100%);max-height:260px;border-radius:8px;";
           video.onerror = () => {
             container.innerHTML = "";
             const a = document.createElement("a");
             a.href = part; a.target = "_blank"; a.rel = "noopener noreferrer";
-            a.textContent = part; a.style.cssText = "color:#60a5fa;word-break:break-all;text-decoration:underline;";
+            a.textContent = part; a.style.cssText = "color:#818cf8;word-break:break-all;text-decoration:underline;";
             container.appendChild(a);
           };
           container.appendChild(video);
@@ -259,7 +490,7 @@
           const a = document.createElement("a");
           a.href = part; a.target = "_blank"; a.rel = "noopener noreferrer";
           a.textContent = part;
-          a.style.cssText = "color:#93c5fd;text-decoration:underline;word-break:break-all;";
+          a.style.cssText = "color:#a5b4fc;text-decoration:underline;word-break:break-all;";
           fragment.appendChild(a);
         }
       } else if (part.length > 0) {
@@ -316,7 +547,7 @@
     const msgBox = document.createElement("div");
     msgBox.className = "msg";
 
-    // Overhauled Reply Quote inside Message
+    // Reply Quote inside Message
     if (data.replyToId) {
       const rep = document.createElement("div");
       rep.className = "reply-preview";
@@ -353,7 +584,7 @@
     reactionsContainer.className = "reactions-container";
     msgBox.appendChild(reactionsContainer);
 
-    // Floating Quick-Action Toolbar on Message Hover
+    // Floating Action Toolbar attached directly to bubble
     const toolbar = document.createElement("div");
     toolbar.className = "msg-toolbar";
 
@@ -393,7 +624,7 @@
     row.appendChild(avatar);
     row.appendChild(msgBox);
 
-    // Mobile tap support for toolbar
+    // Mobile tap support
     row.addEventListener('click', (e) => {
       document.querySelectorAll('.msg-row.touch-active').forEach(r => {
         if (r !== row) r.classList.remove('touch-active');
@@ -438,6 +669,16 @@
       messagesEl.appendChild(row);
       const isMine = data.uid === myUid;
       if (nearBottom || isMine) messagesEl.scrollTop = messagesEl.scrollHeight;
+
+      // Audio and Notification handling for incoming live messages
+      if (isInitialLoadDone && !isMine) {
+        const isMention = myName && data.text && data.text.toLowerCase().includes('@' + myName.toLowerCase());
+        playChime(isMention);
+        if (document.hidden) {
+          const notifTitle = isMention ? `@${data.name || 'Someone'} mentioned you in #${room}` : `${data.name || 'Someone'} in #${room}`;
+          sendNotification(notifTitle, data.text || 'Sent an attachment');
+        }
+      }
     }
     updateOnlineUI();
   }
@@ -522,10 +763,11 @@
     }
   };
 
-  // Keyboard shortcut: Escape to cancel reply or modals
+  // Keyboard shortcut: Escape
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       cancelReply();
+      closeMentionPopup();
       if (gifModal) { gifModal.remove(); gifModal = null; }
       const lightbox = document.querySelector('.lightbox-modal');
       if (lightbox) lightbox.remove();
@@ -533,7 +775,7 @@
   });
 
   // =======================================================
-  // ANIMATED 3-DOT TYPING INDICATOR
+  // ANIMATED TYPING INDICATOR
   // =======================================================
   const typingRef = () => db.ref(`rooms/${room}/typing/${myUid}`);
 
@@ -653,7 +895,7 @@
     }
   };
 
-  // GIF Picker Modal
+  // GIF Picker
   attachGifBtn.onclick = (e) => {
     e.stopPropagation();
     attachMenu.classList.add("hidden");
@@ -788,6 +1030,7 @@
     e.preventDefault();
     const text = textInput.value.trim();
     stopTyping();
+    closeMentionPopup();
     if (!text) return;
     sendBtn.disabled = true;
 
@@ -855,13 +1098,21 @@
         const promises = missingUids.map(uid => db.ref('users/' + uid).once('value'));
         const snaps = await Promise.all(promises);
         snaps.forEach((s, i) => {
-          if (s.exists()) userProfilesCache[missingUids[i]] = s.val();
+          if (s.exists()) userProfilesCache[missingUids[i]] = { ...s.val(), uid: missingUids[i] };
         });
       }
       updateOnlineUI();
     });
 
-    // Reactions Listener (Targeted updates)
+    // Preload user profiles for mentions and search
+    db.ref('users').once('value', (snap) => {
+      const val = snap.val() || {};
+      Object.keys(val).forEach(uid => {
+        userProfilesCache[uid] = { ...val[uid], uid: uid };
+      });
+    });
+
+    // Reactions Listener
     db.ref(`rooms/${room}/reactions`).on('value', (snap) => {
       const allReactions = snap.val() || {};
       
@@ -904,7 +1155,7 @@
     myAvatarType = profile.avatarType;
     myAvatarValue = profile.avatarValue;
 
-    // Build Modern Header
+    // Build Header
     header.innerHTML = "";
 
     // User Profile Chip
@@ -934,6 +1185,12 @@
     onlinePill.onclick = toggleOnlineModal;
     onlinePill.innerHTML = `<span class="pulse-dot"></span> <span id="onlineCountText">0 online</span>`;
 
+    // Sound / Notification Toggle Button
+    const soundBtn = document.createElement("button");
+    soundBtn.id = "soundToggleBtn";
+    soundBtn.className = "btn-header-sound";
+    soundBtn.onclick = toggleSound;
+
     // Logout Button
     const logoutBtn = document.createElement("button");
     logoutBtn.className = "btn-header-logout";
@@ -944,11 +1201,17 @@
     header.appendChild(roomBadge);
     header.appendChild(roomDrawerBtn);
     header.appendChild(onlinePill);
+    header.appendChild(soundBtn);
     header.appendChild(logoutBtn);
+    
     updateOnlineUI();
+    updateSoundBtn();
 
     chatForm.classList.remove("hidden");
     textInput.focus();
+
+    // Initialize @mention Autocomplete
+    initMentionSystem();
 
     // Check empty state initially
     checkEmptyState();
@@ -962,6 +1225,11 @@
       if (val.ts && val.ts < oldestTs) oldestTs = val.ts;
       addMessage(val, key, false);
     });
+
+    // Mark initial load done after initial messages have populated
+    setTimeout(() => {
+      isInitialLoadDone = true;
+    }, 1200);
     
     // Message Updates (Edits)
     messagesRef.on("child_changed", (s) => {
