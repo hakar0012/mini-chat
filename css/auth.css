@@ -1,5 +1,5 @@
 /* =======================================================
-   MODERN AUTH & PROFILE CARD STYLES
+   COZY AUTH & PROFILE PAGE STYLES
    ======================================================= */
 body.auth-page,
 body.profile-page {
@@ -8,73 +8,68 @@ body.profile-page {
   justify-content: center;
   min-height: 100vh;
   padding: 20px;
-  background: radial-gradient(circle at top center, #1e293b 0%, #090d16 80%);
+  background: radial-gradient(circle at 50% 20%, #20202d 0%, #13131a 80%);
 }
 
 .auth-card,
 .profile-card {
-  background: rgba(30, 41, 59, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--border-medium);
-  padding: 32px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  padding: 28px;
   border-radius: var(--radius-lg);
   width: 100%;
-  max-width: 400px;
-  box-shadow: 0 0 50px rgba(37, 99, 235, 0.15), 0 20px 40px rgba(0, 0, 0, 0.6);
-  animation: scaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  max-width: 380px;
+  box-shadow: var(--shadow-lg);
+  animation: scaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .auth-card h1,
 .profile-card h1 {
   text-align: center;
-  margin-bottom: 24px;
-  font-size: 22px;
-  font-weight: 700;
+  margin-bottom: 20px;
+  font-size: 20px;
+  font-weight: 600;
   color: var(--text-main);
-  letter-spacing: -0.5px;
 }
 
 /* Tabs */
 .tabs {
   display: flex;
-  margin-bottom: 20px;
-  background: rgba(15, 23, 42, 0.8);
-  border-radius: var(--radius-md);
-  padding: 4px;
+  margin-bottom: 18px;
+  background: var(--bg-input);
+  border-radius: var(--radius-sm);
+  padding: 3px;
   border: 1px solid var(--border-subtle);
 }
 
 .tab {
   flex: 1;
   text-align: center;
-  padding: 10px;
+  padding: 8px;
   cursor: pointer;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xs);
   font-weight: 500;
-  font-size: 14px;
+  font-size: 13.5px;
   color: var(--text-muted);
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
   user-select: none;
 }
 
 .tab.active {
   background: var(--primary);
   color: white;
-  font-weight: 600;
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
 }
 
 /* Fields */
 .field {
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 
 .field label {
   display: block;
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 500;
-  margin-bottom: 6px;
+  margin-bottom: 5px;
   color: var(--text-muted);
 }
 
@@ -82,54 +77,50 @@ body.profile-page {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 20px;
+  margin-bottom: 18px;
   font-size: 13px;
   cursor: pointer;
   color: var(--text-muted);
 }
 
 .checkbox-field input {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
   accent-color: var(--primary);
   cursor: pointer;
 }
 
 .auth-submit-btn {
   width: 100%;
-  padding: 13px;
-  border-radius: var(--radius-md);
-  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  padding: 11px;
+  border-radius: var(--radius-sm);
+  background: var(--primary);
   color: white;
-  font-size: 15px;
-  font-weight: 600;
-  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
-  transition: all 0.2s ease;
+  font-size: 14.5px;
+  font-weight: 500;
+  transition: background 0.15s ease;
 }
 
 .auth-submit-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #2563eb, #1d4ed8);
-  transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.45);
+  background: var(--primary-hover);
 }
 
 .auth-hint {
   font-size: 12px;
   color: var(--text-dim);
   text-align: center;
-  margin-top: 16px;
+  margin-top: 14px;
 }
 
 .auth-footer {
   text-align: center;
-  margin-top: 22px;
+  margin-top: 18px;
   font-size: 13px;
 }
 
 .auth-footer a {
   color: var(--accent);
   text-decoration: none;
-  transition: color 0.15s;
 }
 
 .auth-footer a:hover {
@@ -138,35 +129,35 @@ body.profile-page {
 
 /* Avatar Preview & Customization */
 .avatar-preview {
-  width: 90px;
-  height: 90px;
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 42px;
-  font-weight: 700;
-  margin: 0 auto 20px;
-  border: 3px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  font-size: 38px;
+  font-weight: 600;
+  margin: 0 auto 16px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
   transition: transform 0.2s ease;
 }
 
 /* Color Presets */
 .color-presets {
   display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: 7px;
+  margin-bottom: 10px;
   flex-wrap: wrap;
 }
 
 .color-swatch {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   cursor: pointer;
   border: 2px solid transparent;
-  transition: all 0.15s ease;
+  transition: transform 0.15s ease;
 }
 
 .color-swatch:hover {
@@ -175,45 +166,43 @@ body.profile-page {
 
 .color-swatch.selected {
   border-color: white;
-  box-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
 }
 
 /* Emoji Presets */
 .presets {
   display: flex;
-  gap: 8px;
+  gap: 7px;
   flex-wrap: wrap;
   justify-content: center;
 }
 
 .preset {
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background: rgba(15, 23, 42, 0.6);
+  background: var(--bg-input);
   border: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  font-size: 18px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .preset:hover {
-  transform: scale(1.2);
-  background: rgba(255, 255, 255, 0.1);
+  transform: scale(1.15);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .preset.selected {
   border-color: var(--primary);
   background: var(--primary-light);
-  box-shadow: 0 0 10px rgba(37, 99, 235, 0.4);
 }
 
 .field-error {
   color: var(--danger);
-  font-size: 13px;
-  margin-top: 5px;
+  font-size: 12.5px;
+  margin-top: 4px;
   display: none;
 }
