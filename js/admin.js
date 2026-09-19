@@ -1,6 +1,9 @@
 // =======================================================
 // ADMIN OVERLORD DASHBOARD LOGIC
 // =======================================================
+// SECURITY NOTE: This is client-side admin validation only.
+// For production, implement server-side validation using Firebase Custom Claims
+// or Cloud Functions to prevent unauthorized access.
 (function() {
   let allUsers = {};
   let bannedUsers = {};
@@ -10,8 +13,11 @@
 
   const searchInput = document.getElementById('adminSearchInput');
 
-  // 1. Security Check
+  // 1. Security Check - CLIENT-SIDE ONLY (easily bypassed)
+  // TODO: Implement server-side admin validation with Firebase Custom Claims
   auth.onAuthStateChanged(async (user) => {
+    // WARNING: This check can be bypassed by modifying client code
+    // Production apps MUST validate admin status server-side
     if (!user || user.uid !== ADMIN_UID) {
       alert("ACCESS DENIED. Overlord privileges required.");
       window.location.href = 'login.html';
