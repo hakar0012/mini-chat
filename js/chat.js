@@ -1,14 +1,10 @@
 // =======================================================
 // MINI GROUP CHAT - COMPLETE LOGIC WITH MENTIONS & AUDIO
 // =======================================================
-// SECURITY NOTE: API keys should be proxied through a backend server.
-// In production, use environment variables or a secure config service.
-// NEVER commit real API keys to version control.
 (function() {
   // --- Third Party API Keys ---
-  // Replace with your own keys or use environment variables in production
-  const IMGBB_API_KEY = process.env.IMGBB_API_KEY || "YOUR_IMGBB_API_KEY"; // Replace with your ImgBB API key
-  const KLIPY_API_KEY = process.env.KLIPY_API_KEY || "YOUR_KLIPY_API_KEY"; // Replace with your Klipy API key
+  const IMGBB_API_KEY = "94b9d72bc5e7b37b1da9d1f1732c2142";
+  const KLIPY_API_KEY = "qonfBVMFL4S3UGx546UVIJ6g6mvWM51F7RYKePDE78JIVs9kGV5DIwRrgPftFuBr";
   const KLIPY_BASE_URL = "https://api.klipy.com/v2";
   const EMOJIS = ['👍', '❤️', '😂', '🔥', '😮', '😢'];
 
