@@ -6,6 +6,8 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
+  <!-- SECURITY: Content Security Policy - Restrict script sources to prevent XSS -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://mini-chaty-default-rtdb.firebaseio.com wss://mini-chaty-default-rtdb.firebaseio.com;" />
   <title>Mini Group Chat - Edit Profile</title>
   <link rel="stylesheet" href="css/base.css?v=5" />
   <link rel="stylesheet" href="css/auth.css?v=5" />

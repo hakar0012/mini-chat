@@ -1,0 +1,147 @@
+{
+  "rules": {
+    // =======================================================
+    // HELPER FUNCTIONS
+    // =======================================================
+    
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Check if user is admin (replace with your admin UID)
+    function isAdmin() {
+      return request.auth != null && 
+             request.auth.uid == 'Gzw028WXugRIWJyBJ8xYqKypAu03';
+    }
+    
+    // Check if user owns this resource
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    // Validate message structure and size
+    function isValidMessage() {
+      return newData.hasChildren(['uid', 'text', 'ts']) &&
+             newData.child('uid').val() == request.auth.uid &&
+             newData.child('text').val().size() <= 1000 &&
+             newData.child('ts').isNumber();
+    }
+    
+    // =======================================================
+    // USER PROFILES
+    // Users can read all profiles but only edit their own
+    // =======================================================
+    "users": {
+      "$uid": {
+        ".read": isAuthenticated(),
+        ".write": isOwner($uid),
+        ".validate": "newData.hasChildren(['name', 'createdAt'])"
+      }
+    },
+    
+    // =======================================================
+    // USERNAME REGISTRY
+    // Prevent username hijacking, allow claiming unused names
+    // =======================================================
+    "usernames": {
+      "$username": {
+        ".read": true,
+        ".write": isAuthenticated() && 
+                  (!data.exists() || data.child('uid').val() == request.auth.uid),
+        ".validate": "newData.hasChild('uid') && newData.child('uid').val() == request.auth.uid"
+      }
+    },
+    
+    // =======================================================
+    // CHAT ROOMS & MESSAGES
+    // Authenticated users can read/write messages
+    // Only admins can delete messages
+    // =======================================================
+    "rooms": {
+      "$roomId": {
+        ".read": isAuthenticated(),
+        "messages": {
+          ".read": isAuthenticated(),
+          "$messageId": {
+            ".write": isAuthenticated() && 
+                      (!data.exists() || newData.child('uid').val() == request.auth.uid),
+            ".validate": "newData.hasChildren(['uid', 'text', 'ts']) &&
+                         newData.child('uid').val() == request.auth.uid &&
+                         newData.child('text').val().size() <= 1000 &&
+                         newData.child('ts').isNumber()"
+          }
+        },
+        "typing": {
+          ".read": isAuthenticated(),
+          "$userId": {
+            ".write": isAuthenticated() && $userId == request.auth.uid
+          }
+        }
+      }
+    },
+    
+    // =======================================================
+    // BANNED USERS LIST
+    // Only admins can ban/unban users
+    // All authenticated users can read to check their status
+    // =======================================================
+    "bannedUsers": {
+      ".read": isAuthenticated(),
+      "$uid": {
+        ".write": isAdmin(),
+        ".validate": "newData.val() === true || newData.val() === false"
+      }
+    },
+    
+    // =======================================================
+    // RATE LIMITING
+    // Track last message time per user for rate limiting
+    // =======================================================
+    "rateLimits": {
+      "$userId": {
+        ".read": isAuthenticated(),
+        ".write": isAuthenticated() && $userId == request.auth.uid,
+        "lastMessage": {
+          ".validate": "newData.isNumber()"
+        }
+      }
+    },
+    
+    // =======================================================
+    // POLL VOTES
+    // Users can vote on polls once per poll
+    // =======================================================
+    "pollVotes": {
+      "$pollId": {
+        ".read": isAuthenticated(),
+        "$userId": {
+          ".write": isAuthenticated() && $userId == request.auth.uid && !data.exists(),
+          ".validate": "newData.hasChild('option') && newData.child('option').isString()"
+        }
+      }
+    },
+    
+    // =======================================================
+    // REACTIONS
+    // Users can add/remove their own reactions
+    // =======================================================
+    "reactions": {
+      "$messageId": {
+        ".read": isAuthenticated(),
+        "$userId": {
+          ".write": isAuthenticated() && $userId == request.auth.uid,
+          ".validate": "newData.hasChild('emoji') || !newData.exists()"
+        }
+      }
+    },
+    
+    // =======================================================
+    // DEFAULT RULE - Deny all other access
+    // =======================================================
+    ".other": {
+      ".read": false,
+      ".write": false
+    }
+  }
+}
