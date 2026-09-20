@@ -540,10 +540,25 @@
         return;
       }
       myUid = user.uid;
-      const myPresenceRef = db.ref("presence/" + myUid);
-      myPresenceRef.set(true);
-      myPresenceRef.onDisconnect().remove();
+      
+      // --- IMPROVED PRESENCE SYSTEM ---
+      // Using .info/connected for reliable presence detection
+      const presenceRef = db.ref("presence/" + myUid);
+      const connectedRef = db.ref(".info/connected");
+      
+      // Listen for connection state changes
+      connectedRef.on("value", (snap) => {
+        if (snap.val() === true) {
+          // We're connected - set up onDisconnect cleanup FIRST, then set presence
+          presenceRef.onDisconnect().remove().then(() => {
+            presenceRef.set(true);
+          }).catch((err) => {
+            console.error("Failed to set up presence:", err);
+          });
+        }
+      });
 
+      // Listen to presence changes for all users
       db.ref("presence").on("value", async (snap) => {
         onlineUsers = snap.val() || {};
         const uids = Object.keys(onlineUsers);
